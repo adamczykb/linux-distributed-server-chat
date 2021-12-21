@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     WINDOW *info_window = newwin(0, COLS/4, 5, 0);
     refresh();
     box(info_window, 0, 0);
-    char *adress = "Numer serwera: xyz";
+    char *adress = "Numer serwera: 2";
     mvwprintw(info_window, 2, 1, adress);
     boxDescription(info_window, "Dane serwera");
     wrefresh(info_window);
