@@ -6,6 +6,7 @@ Serwer komunikuje się z innymi przy pomocy ich kolejek wejściowych, tzn. tworz
 
 ## Wymogi
 Max kientów na serwer: 5
+Max serwerów: 10
 
 ## Klient
 * Pyta, który serwer (może być juz pełny)
