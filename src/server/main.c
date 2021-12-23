@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -8,130 +7,81 @@
 #include <sys/msg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 
-struct Mess
+#include "../../inc/common.h"
+#include "../../inc/server/ui.h"
+#include "../../inc/server/setup.h"
+#include "../../inc/server/user.h"
+
+int nr_of_clients = 0;
+char *current_clients[5][100];
+int current_server_id;
+time_t current_time;
+int server_key = 0;
+
+void end_of_work()
 {
-    long msgid;
-    int from_server;
-    int from_client;
-    char from_client_name[100];
-    int to_chanel;
-    char to_client_name[100];
-    long timestamp;
-    char body[1024];
-};
-
-int nr_of_clients=0;
-char current_clients[5][100];
-
-
-// !!!Opisz to jakoś Bartek, bo nadal nie ogarniam co to robi!!!
-void boxDescription(WINDOW *pwin, const char *title)
-{
-    int x, stringsize;
-    stringsize = 4 + strlen(title);
-    x = 1;
-    mvwaddch(pwin, 0, x, ' ');
-    waddstr(pwin, title);
-    waddch(pwin, ' ');
+    msgctl(current_server_id, IPC_RMID, NULL);
+    printf("Serwer zostal zamkniety\n");
+    exit(0);
 }
-
-// Zwraca wskaźnik na tablicę [ilość_serwerów, id_kolejki_serwera1, ...]
-int* load_config(){
-    // odczytanie pliku
-    char* filename = "config.txt";
-    int file = open(filename, O_RDWR);
-    char buff[100] = "";
-    int nr_of_lines = 1;
-    for (int i=0; read(file, &buff[i], 1)>0; i++)
-        if (buff[i-1]=='\n' && buff[i]>=48 && buff[i]<=57) nr_of_lines += 1;
-    close(file);
-
-    // zapisanie elementów z pliku do listy
-    int *queue_ids = (int *)malloc(sizeof(int)*nr_of_lines+1);
-    queue_ids[0] = nr_of_lines;
-    int current_v=0, current_i=1;
-    for (int i=0; i<100; i++){
-        if (buff[i]=='\0') break;
-        if (buff[i]=='\n'){
-            queue_ids[current_i] = msgget(current_v, 0644|IPC_CREAT);
-            current_v = 0;
-            current_i += 1;
-            continue;
-        }
-        current_v = current_v*10+buff[i]-48;
-    }
-    if (current_v != 0) queue_ids[current_i] = msgget(current_v, 0644|IPC_CREAT);
-    return queue_ids;
-}
-
-int registration(char nickname[100]){
-    // Sprawdzenie czy nazwa już nie występuje
-    for (int i=0; i<5; i++){
-        if (!strcmp(current_clients[i], nickname)){
-            return -1;
-        }
-    }
-    // Dodanie użytkownika
-    strcpy(current_clients[nr_of_clients], nickname);
-    nr_of_clients++;
-    return 0;
-}
-
-int logout(char nickname[100]){
-    int placement;
-    // Sprawdzenie gdzie na liście występuje ta nazwa
-    for (int i=0; i<nr_of_clients; i++){
-        if (strcmp(current_clients[i], nickname)){
-            placement = i;
-            break;
-        }
-    }
-    // Usunięcie użytkownika i przesunięcie pozostałych nazw
-    for (int i=placement; i<nr_of_clients; i++){
-        strcpy(current_clients[i], current_clients[i+1]);
-    }
-    nr_of_clients--;
-    strcpy(current_clients[nr_of_clients], "");
-}
-
 
 int main(int argc, char *argv[])
 {
-    if (argc<1){
-        printf("Podaj nr serwera\n");
-        exit(-1);
-    }
-    int current_server_id = msgget(atoi(argv[1]), 0644|IPC_CREAT);
-
-    int* servers_ids = load_config();
-    // printf("ID kolejek przypisane serwerom:\n");
-    // for (int i=1; i<=servers_ids[0]; i++){
-    //     printf("%i\n", servers_ids[i]);
-    // }
-
-    // testowa obsługa rejestracji
-    struct Mess reg;
-    msgrcv(current_server_id, &reg, sizeof(reg)-sizeof(long), 2, 0);
-    int reg_outcome = registration(reg.from_client_name);
-    struct Mess reg_out;
-    reg_out.msgid = 2;
-    reg_out.from_server = current_server_id;
-    reg_out.body[0] = reg_outcome+48;
-    msgsnd(reg.from_client, &reg_out, sizeof(reg)-sizeof(long), 0);
-
-    printf("Ilość klientów na serwerze: %i\n", nr_of_clients);
-    printf("Lista klientów:\n");
-    for (int i=0; i<5; i++)
-        printf("%s\n", current_clients[i]);
-
-
+    signal(SIGINT, end_of_work);
+    int *servers_ids;
+    load_config(&server_key, servers_ids, "config.txt");
     // initscr();
     // cbreak();
     // noecho();
 
+    current_server_id = msgget(server_key, 0644 | IPC_CREAT);
+    printf("Klucz serwera:%d\n", server_key);
 
-    // /* 
+    // tworzenie pliku logów
+    char log_pathname[30];
+    sprintf(log_pathname, "./logs/%d_serwer.log", server_key);
+    int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0777);
+    //===========
+
+    // cykl życia serwera
+    struct Mess request, response;
+    clear_mess(&request);
+    clear_mess(&response);
+    while (1)
+    {
+        msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), 0, 0);
+        current_time = time(NULL);
+        switch (request.msgid)
+        {
+
+        case 2: // wymiana informacji -> rejestracja użytkownika
+            int reg_outcome = registration(request.from_client_name, &current_clients, &nr_of_clients); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
+            request.msgid = 2;
+            request.from_server = current_server_id;
+            request.body[0] = reg_outcome + 48;
+            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+
+            printf("Ilość klientów na serwerze: %i\n", nr_of_clients);
+            printf("Lista klientów:\n");
+            for (int i = 0; i < 5; i++)
+                printf("%s\n", current_clients[i]);
+
+            break;
+
+        default: // obsluga blednego pakietu
+            char foo[2048];
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nClient name:%s\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_client, request.from_client_name);
+            write(log_descriptor, foo, strlen(foo));
+            sleep(1);
+            break;
+        }
+        clear_mess(&request);
+        clear_mess(&response);
+    }
+
+    // /*
     //     Deklaracja:
     //     Informacja o programie
     // */
@@ -144,9 +94,8 @@ int main(int argc, char *argv[])
     // char *authors = "Bartosz Adamczyk (148163) i Kacper Garncarek (148114)";
     // mvwprintw(server_banner_window, 2, (COLS - strlen(authors)) / 2, authors);
     // wrefresh(server_banner_window);
-    
 
-    // /* 
+    // /*
     //     Deklaracja:
     //     Podstawowe informacje o serwerze
 
@@ -160,8 +109,6 @@ int main(int argc, char *argv[])
     // mvwprintw(info_window, 2, 1, adress);
     // boxDescription(info_window, "Dane serwera");
     // wrefresh(info_window);
-
-
 
     // getch();
     // endwin();
