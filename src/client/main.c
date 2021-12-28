@@ -67,9 +67,9 @@ int main(int argc, char *argv[])
 
     get_server_keys("config.in");
 
-   
+
     int server_queue_id = connect_to_server(server_keys[1], client_queue_id, nick);
-    printf("ID serwera = %i\n", server_queue_id);
+    printf("ID serwera = %d\n", server_queue_id);
 
     return 0;
 }

@@ -1,22 +1,24 @@
 #include "../../inc/server/user.h"
 
-int registration(char nickname[100],  char *current_clients[][100], int *nr_of_clients)
+void registration(char nickname[100],  char *current_clients[][100], int *nr_of_clients, int *status)
 {
     // Sprawdzenie czy nazwa już nie występuje
     for (int i = 0; i < 5; i++)
     {
         if (!strcmp(current_clients[i], nickname))
         {
-            return -1;
+            *status = -1;
+            return;
         }
     }
     // Dodanie użytkownika
     strcpy(current_clients[*nr_of_clients], nickname);
     (*nr_of_clients)++;
-    return 0;
+    *status=0;
+    return;
 }
 
-int logout(char nickname[100],  char *current_clients[][100], int *nr_of_clients)
+void logout(char nickname[100],  char *current_clients[][100], int *nr_of_clients, int *status)
 {
     int placement;
     // Sprawdzenie gdzie na liście występuje ta nazwa

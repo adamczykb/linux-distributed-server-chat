@@ -50,3 +50,29 @@ void read_config(int *servers_keys, char *path_to_config) // czytamy config do l
     if (current_v != 0)
         servers_keys[current_i] = current_v;
 }
+
+void init_log(struct Log *log){
+    for(int i=0;i<500;i++){
+        strcpy(log[i].body,"");
+        strcpy(log[i].from,"");
+        strcpy(log[i].head,"");
+        log[i].time = (time_t)NULL;
+        log[i].empty=1;
+    }
+}
+void add_to_log(struct Log *log,time_t time,char *head,char *from,char *body){
+    for (int i=499;i>0;i--){
+        log[i].time=log[i-1].time;
+        log[i].empty = log[i-1].empty;
+        strcpy(log[i].from,log[i-1].from);
+        strcpy(log[i].head,log[i-1].head);
+        strcpy(log[i].body,log[i-1].body);
+    }
+
+    log[0].empty = 0;
+    log[0].time = time;
+    strcpy(log[0].from,from);
+    strcpy(log[0].head,head);
+    strcpy(log[0].body,body);
+
+}
