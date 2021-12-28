@@ -19,7 +19,20 @@ char *current_clients[5][100];
 int current_server_id;
 time_t current_time;
 int server_key = 0;
+int *servers_ids;
 
+// nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
+void setup(char *config_path)
+{
+    int nr_of_lines = 1;
+    num_of_config_lines(&nr_of_lines, config_path);
+    servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
+    load_config(&server_key, servers_ids, config_path);
+    current_server_id = msgget(server_key, 0644 | IPC_CREAT);
+    if(current_server_id==-1){
+        perror("Blad otwierania kolejki serwera");
+    }
+}
 void end_of_work()
 {
     msgctl(current_server_id, IPC_RMID, NULL);
@@ -30,19 +43,18 @@ void end_of_work()
 int main(int argc, char *argv[])
 {
     signal(SIGINT, end_of_work);
-    int *servers_ids;
-    load_config(&server_key, servers_ids, "config.txt");
+
+    setup("config.in");
+
     // initscr();
     // cbreak();
     // noecho();
-
-    current_server_id = msgget(server_key, 0644 | IPC_CREAT);
     printf("Klucz serwera:%d\n", server_key);
 
     // tworzenie pliku logów
     char log_pathname[30];
     sprintf(log_pathname, "./logs/%d_serwer.log", server_key);
-    int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0777);
+    int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0644);
     //===========
 
     // cykl życia serwera
@@ -56,7 +68,7 @@ int main(int argc, char *argv[])
         switch (request.msgid)
         {
 
-        case 2: // wymiana informacji -> rejestracja użytkownika
+        case 2:                                                                                         // wymiana informacji -> rejestracja użytkownika
             int reg_outcome = registration(request.from_client_name, &current_clients, &nr_of_clients); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
             request.msgid = 2;
             request.from_server = current_server_id;

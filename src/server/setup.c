@@ -11,9 +11,8 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
         if (buff[i - 1] == '\n' && buff[i] >= 48 && buff[i] <= 57)
             nr_of_lines += 1;
     close(file);
-
     // zapisanie elementów z pliku do listy
-    servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
+
     servers_ids[0] = nr_of_lines;
     int current_v = 0, current_i = 1;
 

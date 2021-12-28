@@ -1,6 +1,6 @@
 #include <time.h>
 #include <string.h>
-
+#include <fcntl.h>
 #ifndef PSIW_COMMON_H
 #define PSIW_COMMON_H
 
@@ -17,4 +17,6 @@ struct Mess
 };
 
 void clear_mess(struct Mess *mess);
+void read_config(int *servers_keys, char *path_to_config);
+void num_of_config_lines(int *nr_of_lines, char *path_to_config);
 #endif
