@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     struct Mess request, response;
     clear_mess(&request);
     clear_mess(&response);
-
+    add_to_log(log, time(NULL), "Serwer wystartowal", "localhost", "gotowy na odbior wiadomosci");
     window_init();
     while (1)
     {
@@ -88,9 +88,9 @@ int main(int argc, char *argv[])
         case 2: // wymiana informacji -> rejestracja użytkownika
             int reg_outcome;
             registration(request.from_client_name, &current_clients, &nr_of_clients, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
-            request.msgid = 2;
-            request.from_server = current_server_id;
-            request.body[0] = reg_outcome + 48;
+            response.msgid = 2;
+            response.from_server = current_server_id;
+            response.body[0] = reg_outcome + 48;
             msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
 
             char from_client_string[20];

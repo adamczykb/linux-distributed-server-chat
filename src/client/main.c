@@ -16,7 +16,7 @@
 int client_queue_id;
 int *server_keys;
 // Zwraca id kolejki serwera, -1 jeśli nie ma miejsca
-int connect_to_server(int server_nr, int client_queue_id, char nick[100])
+int connect_to_server(int server_nr, char nick[100])
 {
     int server_id = msgget(server_nr, 0644 | IPC_CREAT);
 
@@ -31,8 +31,8 @@ int connect_to_server(int server_nr, int client_queue_id, char nick[100])
 
     struct Mess registration_ans;
     clear_mess(&registration_ans);
+    msgrcv(client_queue_id, &registration_ans, sizeof(registration_ans) - sizeof(long), 2, 0);
 
-    msgrcv(client_queue_id, &registration_ans, sizeof(registration_msg) - sizeof(long), 2, 0);
     if (registration_ans.body[0] == '0')
     {
         return registration_ans.from_server;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     get_server_keys("config.in");
 
 
-    int server_queue_id = connect_to_server(server_keys[1], client_queue_id, nick);
+    int server_queue_id = connect_to_server(atoi(argv[1]), nick);
     printf("ID serwera = %d\n", server_queue_id);
 
     return 0;
