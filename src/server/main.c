@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
         clear_mess(&request);
         clear_mess(&response);
     }
-
+    msgctl(current_server_id, IPC_RMID, NULL);
     return 0;
 }
 
@@ -121,6 +121,7 @@ void window_init()
     endwin();
     refresh();
     initscr();
+    curs_set(0);
     start_color();
     init_pair(1, COLOR_YELLOW, COLOR_BLACK);
     init_pair(2, COLOR_BLUE, COLOR_BLACK);

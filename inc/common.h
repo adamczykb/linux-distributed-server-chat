@@ -1,6 +1,8 @@
 #include <time.h>
 #include <string.h>
 #include <fcntl.h>
+#include <ncurses.h>
+
 #ifndef PSIW_COMMON_H
 #define PSIW_COMMON_H
 
@@ -29,4 +31,6 @@ void add_to_log(struct Log *log,time_t time,char *head,char *from,char *body);
 void clear_mess(struct Mess *mess);
 void read_config(int *servers_keys, char *path_to_config);
 void num_of_config_lines(int *nr_of_lines, char *path_to_config);
+void boxDescription(WINDOW *pwin, const char *title); /* pwin (WINDOW*) -> okno ncurses, title (const char *) -> treść, która ma zostać wyświetlona nad oknem */
+
 #endif

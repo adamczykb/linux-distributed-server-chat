@@ -76,3 +76,13 @@ void add_to_log(struct Log *log,time_t time,char *head,char *from,char *body){
     strcpy(log[0].body,body);
 
 }
+
+void boxDescription(WINDOW *pwin, const char *title)
+{
+    int x, stringsize;
+    stringsize = 4 + strlen(title);
+    x = 1;
+    mvwaddch(pwin, 0, x, ' '); //mv - move, w - window, add - dodaj, ch - char
+    waddstr(pwin, title);
+    waddch(pwin, ' ');
+}
