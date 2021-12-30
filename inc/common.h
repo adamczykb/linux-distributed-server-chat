@@ -1,7 +1,15 @@
 #include <time.h>
 #include <string.h>
-#include <fcntl.h>
 #include <ncurses.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #ifndef PSIW_COMMON_H
 #define PSIW_COMMON_H

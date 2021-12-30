@@ -1,40 +1,64 @@
 #include "../../inc/server/user.h"
 
-void registration(char nickname[100],  char *current_clients[][100], int *nr_of_clients, int *status)
+void init_user_struct(struct User (*user)[MAX_USER])
 {
-    // Sprawdzenie czy nazwa już nie występuje
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < MAX_USER; i++)
     {
-        if (!strcmp(current_clients[i], nickname))
+        user[i]->free = 1;
+        user[i]->queue_id = 0;
+        strcpy(user[i]->nick, "");
+    }
+}
+
+void registration(int queue_id, char nickname[100], struct User (*user)[MAX_USER], int *status)
+{
+    int nr_of_clients;
+    current_user_number(&nr_of_clients, user);
+    if (nr_of_clients > 4)
+    {
+        *status = -1;
+        return;
+    }
+    // Sprawdzenie czy nazwa już nie występuje
+    for (int i = 0; i < MAX_USER; i++)
+    {
+        if (!strcmp(user[i]->nick, nickname))
         {
             *status = -1;
             return;
         }
     }
     // Dodanie użytkownika
-    strcpy(current_clients[*nr_of_clients], nickname);
-    (*nr_of_clients)++;
-    *status=0;
-    return;
+    strcpy(user[nr_of_clients]->nick, nickname);
+    user[nr_of_clients]->queue_id = queue_id;
+    user[nr_of_clients]->free = 0;
+    *status = 0;
 }
 
-void logout(char nickname[100],  char *current_clients[][100], int *nr_of_clients, int *status)
+void current_user_number(int *number, struct User (*user)[MAX_USER])
 {
-    int placement;
-    // Sprawdzenie gdzie na liście występuje ta nazwa
-    for (int i = 0; i < *nr_of_clients; i++)
+    *number = 0;
+    for (int i = 0; i < MAX_USER; i++)
     {
-        if (strcmp(current_clients[i], nickname))
+        if (user[i]->free == 1)
+            break;
+        (*number)++;
+    }
+}
+void logout(int queue_id, struct User (*user)[MAX_USER], int *status)
+{
+    for (int i = 0; i < MAX_USER; i++)
+    {
+        if (user[i]->queue_id)
         {
-            placement = i;
+            for (int j = i; j < MAX_USER - 1; j++)
+            {
+                strcpy(user[j]->nick, user[j + 1]->nick);
+                user[j]->queue_id = user[j + 1]->queue_id;
+                user[j]->free = user[j + 1]->free;
+            }
             break;
         }
     }
-    // Usunięcie użytkownika i przesunięcie pozostałych nazw
-    for (int i = placement; i < *nr_of_clients; i++)
-    {
-        strcpy(current_clients[i], current_clients[i + 1]);
-    }
-    (*nr_of_clients)--;
-    strcpy(current_clients[*nr_of_clients], "");
+    // Usunięcie użytkownika i przesunięcie pozostałych
 }

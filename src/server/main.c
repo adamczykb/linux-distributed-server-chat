@@ -1,14 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <signal.h>
-
+#include <sys/shm.h>
 #include "../../inc/common.h"
 #include "../../inc/server/ui.h"
 #include "../../inc/server/setup.h"
@@ -19,16 +9,16 @@ WINDOW *server_banner_window;
 WINDOW *log_window;
 
 struct Log log[500];
+struct User (*user)[MAX_USER];
 
-int nr_of_clients = 0;
-char *current_clients[5][100];
 int current_server_id = 0;
 time_t current_time;
 int server_key = 0;
 int *servers_ids;
 char foo[100];
 int status;
-
+int userSID;
+int log_descriptor;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
 
 void setup(char *config_path)
@@ -39,8 +29,6 @@ void setup(char *config_path)
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
     init_log(log);
-    
-
     if (current_server_id == -1)
     {
         perror("Blad otwierania kolejki serwera");
@@ -49,7 +37,9 @@ void setup(char *config_path)
 void end_of_work()
 {
     msgctl(current_server_id, IPC_RMID, NULL);
-    printf("Serwer zostal zamkniety\n");
+    shmctl(current_server_id + 1, IPC_RMID, NULL);
+    shmdt(user);
+    printf("\nSerwer zostal zamkniety\n");
     endwin();
     exit(0);
 }
@@ -57,6 +47,7 @@ void end_of_work()
 void refresh_status_client_window();
 void window_init();
 void fill_log();
+void hearthbit_section();
 
 int main(int argc, char *argv[])
 {
@@ -67,35 +58,47 @@ int main(int argc, char *argv[])
     // tworzenie pliku logów
     char log_pathname[30];
     sprintf(log_pathname, "./logs/%d_serwer.log", server_key);
-    int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0644);
+    log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0644);
     //===========
 
     // cykl życia serwera
     struct Mess request, response;
     clear_mess(&request);
     clear_mess(&response);
+
     add_to_log(log, time(NULL), "Serwer wystartowal", "localhost", "gotowy na odbior wiadomosci");
+
+    hearthbit_section();
     window_init();
+
     while (1)
     {
-        status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), 0, IPC_NOWAIT);
+        status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
+        if (status == -1)
+        {
+            refresh();
+            window_init();
+            sleep(1);
+            continue;
+        }
         current_time = time(NULL);
         switch (request.msgid)
         {
-        case -1:
-            sleep(0.05);
+        case 0:
             break;
         case 2: // wymiana informacji -> rejestracja użytkownika
             int reg_outcome;
-            registration(request.from_client_name, &current_clients, &nr_of_clients, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
+            registration(request.from_client, request.from_client_name, user, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
             response.msgid = 2;
             response.from_server = current_server_id;
             response.body[0] = reg_outcome + 48;
-            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
-
-            char from_client_string[20];
-            sprintf(from_client_string,"%d",request.from_client);
-            add_to_log(log, time(NULL), "Dolaczyl uzytkownik", from_client_string, request.from_client_name);
+            if (reg_outcome == 0)
+            {
+                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+                char from_client_string[20];
+                sprintf(from_client_string, "%d", request.from_client);
+                add_to_log(log, time(NULL), "Dolaczyl uzytkownik", from_client_string, request.from_client_name);
+            }
             break;
 
         default: // obsluga blednego pakietu
@@ -106,9 +109,7 @@ int main(int argc, char *argv[])
             break;
         }
         refresh();
-
         window_init();
-
         clear_mess(&request);
         clear_mess(&response);
     }
@@ -166,7 +167,7 @@ void window_init()
 
     fill_log();
 
-    refresh_status_client_window();
+    refresh_status_client_window(user);
     wrefresh(info_window);
     wrefresh(server_banner_window);
     wrefresh(log_window);
@@ -206,7 +207,9 @@ void fill_log()
 }
 void refresh_status_client_window()
 {
-    sprintf(foo, "%d", nr_of_clients);
+    int current_user_num;
+    current_user_number(&current_user_num, user);
+    sprintf(foo, "%d", current_user_num);
     wmove(info_window, 5, 0);
     wclrtoeol(info_window);
     mvwprintw(info_window, 5, 3, foo);
@@ -214,8 +217,56 @@ void refresh_status_client_window()
     {
         wmove(info_window, 7 + i, 0);
         wclrtoeol(info_window);
-        mvwprintw(info_window, 7 + i, 3, current_clients[i]);
+        mvwprintw(info_window, 7 + i, 3, user[i]->nick);
     }
     box(info_window, 0, 0);
     boxDescription(info_window, "Status serwera");
+}
+
+void hearthbit_section()
+{
+    struct Mess request, response;
+    clear_mess(&request);
+    clear_mess(&response);
+
+    if (fork() == 0)
+    {
+        if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
+        {
+            perror("shmget");
+            exit(1);
+        }
+        user = (struct User *)shmat(userSID, 0, 0);
+        int client_number, status;
+        sleep(1);
+        while (getppid() != 1)
+        {
+            current_user_number(&client_number, user);
+            for (int i = 0; i < client_number; i++)
+            {
+                request.msgid = 20;
+                request.from_server = current_server_id;
+                request.body[0] = 'A';
+                msgsnd(user[i]->queue_id, &request, sizeof(request) - sizeof(long), 0);
+                sleep(1);
+                status = msgrcv(current_server_id, &response, sizeof(response) - sizeof(long), 20, IPC_NOWAIT);
+                if (status == -1 || request.body[0] != response.body[0])
+                {
+                    logout(user[i]->queue_id, user, &status);
+                }
+                clear_mess(&request);
+                clear_mess(&response);
+            }
+        }
+        exit(1);
+    }
+
+    if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | IPC_EXCL | 0644)) == -1)
+    {
+        perror("shmget");
+        exit(1);
+    }
+
+    user = (struct User *)shmat(userSID, 0, 0);
+    init_user_struct(user);
 }

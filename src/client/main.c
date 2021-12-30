@@ -1,60 +1,26 @@
-#include <stdio.h>
-#include <ncurses.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <signal.h>
-
 #include "../../inc/common.h"
+#include "../../inc/client/communication.h"
 
-int server_queue_id=-1;
+int server_queue_id = -1;
 int client_queue_id;
 
 int choosed_server_key = 0;
 int *server_keys;
 char nick[100] = "";
 char komunikat[100] = "";
+int status;
+time_t current_time;
 
 int nr_of_serwers;
 
 WINDOW *single_window;
+WINDOW *client_banner_window;
 // Zwraca id kolejki serwera, -1 jeśli nie ma miejsca
-
 
 void choose_server_screen();
 void nick_input_screen();
+void main_screen();
 
-int connect_to_server(int server_nr, char nick[100])
-{
-    int server_id = msgget(server_nr, 0644);
-    if(server_id==-1)
-        return -1;
-    struct Mess registration_msg;
-    clear_mess(&registration_msg);
-
-    registration_msg.msgid = 2;
-    registration_msg.from_client = client_queue_id;
-
-    strcpy(registration_msg.from_client_name, nick);
-    msgsnd(server_id, &registration_msg, sizeof(registration_msg) - sizeof(long), 0);
-
-    struct Mess registration_ans;
-    clear_mess(&registration_ans);
-    msgrcv(client_queue_id, &registration_ans, sizeof(registration_ans) - sizeof(long), 2, 0);
-    if (registration_ans.body[0] == '0')
-    {
-        return registration_ans.from_server;
-    }
-    else
-    {
-        return -1;
-    }
-}
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
 void get_server_keys(char *config_path)
 {
@@ -67,14 +33,15 @@ void get_server_keys(char *config_path)
 void end_of_work()
 {
     msgctl(client_queue_id, IPC_RMID, NULL);
-    printf("Klient zostal zamkniety\n");
+    printf("\nKlient zostal zamkniety\n");
     exit(0);
 }
 
-
-
 int main(int argc, char *argv[])
 {
+    int cursor_index[3]; // pierwsza zmienna to wskaznik wertkalny na liscie, drugia zmienna to wskaznik z ktorego okna, trzecia mowi jakie okno pomocnicze jest teraz otwarte
+    memset(&cursor_index[0], 0, 3);
+
     signal(SIGINT, end_of_work);
     client_queue_id = msgget(IPC_PRIVATE, 0644 | IPC_CREAT);
 
@@ -85,29 +52,92 @@ int main(int argc, char *argv[])
         nick_input_screen();
     }
 
-    while (server_queue_id  == -1)
+    while (server_queue_id == -1)
     {
         choose_server_screen();
-        server_queue_id = connect_to_server(choosed_server_key, nick);
+        connect_to_server(choosed_server_key, nick, client_queue_id, &server_queue_id);
 
-        if(server_queue_id  == -1)
-            sprintf(komunikat,"Serwer %d jest pelny lub nieaktywny",choosed_server_key);
+        if (server_queue_id == -1)
+            sprintf(komunikat, "Serwer %d jest pelny lub nieaktywny", choosed_server_key);
     }
 
-    // int server_queue_id = connect_to_server(atoi(argv[1]), nick);
-    // printf("ID serwera = %d\n", server_queue_id);
-    wgetch(single_window);
+    char log_pathname[30];
+    sprintf(log_pathname, "./logs/%s_client.log", nick);
+    int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0644);
+
+    struct Mess request, response;
+
+    if (fork() == 0)
+    {
+        while (getppid() != 1)
+        {
+            msgrcv(client_queue_id, &request, sizeof(request) - sizeof(long), 20, 0);
+            strcpy(response.body, request.body);
+            response.msgid = 20;
+            response.from_client = client_queue_id;
+            strcpy(response.from_client_name, nick);
+            msgsnd(server_queue_id, &response, sizeof(response) - sizeof(long), 0);
+        }
+        exit(0);
+    }
+
+    while (1)
+    {
+        clear_mess(&request);
+        clear_mess(&response);
+        status = msgrcv(client_queue_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
+        current_time = time(NULL);
+        if (status == -1)
+        {
+            sleep(0.1);
+            continue;
+        }
+        switch (request.msgid)
+        {
+        case 0:
+            break;
+        default: // obsluga blednego pakietu
+            char foo[2048];
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_server);
+            write(log_descriptor, foo, strlen(foo));
+            sleep(1);
+            break;
+        }
+        refresh();
+        main_screen();
+    }
+
     endwin();
     msgctl(client_queue_id, IPC_RMID, NULL);
 
     return 0;
 }
-
-
-
+void main_screen()
+{
+    endwin();
+    refresh();
+    initscr();
+    curs_set(0);
+    start_color();
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(2, COLOR_BLUE, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
+    /*
+        Deklaracja:
+        Informacja o programie
+    */
+    client_banner_window = newwin(4, 0, 0, 0);
+    refresh();
+    box(client_banner_window, 0, 0);
+    char *project_name = "Projekt PSiW serwer 0.0.1";
+    mvwprintw(client_banner_window, 1, (COLS - strlen(project_name)) / 2, project_name);
+    boxDescription(client_banner_window, "Informacje");
+    char *authors = "Bartosz Adamczyk (148163) i Kacper Garncarek (148114)";
+    mvwprintw(client_banner_window, 2, (COLS - strlen(authors)) / 2, authors);
+}
 void nick_input_screen()
 {
-    char *enter = "<ENTER>";
+    char *enter = "< ENTER >";
     char *foo = "Klient komunikatora";
 
     endwin();
@@ -147,10 +177,10 @@ void choose_server_screen()
     cbreak();
     start_color();
     curs_set(0);
-    char *enter = "\\/ <ENTER> /\\";
+    char *enter = "\\/ < ENTER > /\\";
     char *foo = "Klient komunikatora";
 
-    single_window = newwin(nr_of_serwers+10, 60, (LINES / 2) - (nr_of_serwers+10)/2, (COLS / 2) - 30);
+    single_window = newwin(nr_of_serwers + 10, 60, (LINES / 2) - (nr_of_serwers + 10) / 2, (COLS / 2) - 30);
     refresh();
     box(single_window, 0, 0);
     keypad(single_window, TRUE);
@@ -162,8 +192,6 @@ void choose_server_screen()
     getmaxyx(single_window, y, x);
     boxDescription(single_window, "Wybor serwera");
 
-    // char input_box[x-5];
-    // memset(&input_box[0], 32, sizeof(input_box));
     mvwprintw(single_window, y - 2, (x / 2) - (strlen(enter) / 2), enter);
     mvwprintw(single_window, 2, (x / 2) - (strlen(foo) / 2), foo);
 
@@ -185,7 +213,6 @@ void choose_server_screen()
             sprintf(temp_serwer_name, "%d", server_keys[i]);
             mvwprintw(single_window, 5 + i, 3, temp_serwer_name);
             wattroff(single_window, COLOR_PAIR(1));
-
         }
         choice = wgetch(single_window);
         switch (choice)
@@ -208,5 +235,5 @@ void choose_server_screen()
             break;
         }
     }
-    choosed_server_key=server_keys[highlight];
+    choosed_server_key = server_keys[highlight];
 }
