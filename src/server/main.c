@@ -1,25 +1,27 @@
-#include <sys/shm.h>
+
 #include "../../inc/common.h"
 #include "../../inc/server/ui.h"
 #include "../../inc/server/setup.h"
 #include "../../inc/server/user.h"
+#include "../../inc/server/logger.h"
+#include "../../inc/server/trans.h"
 
 WINDOW *info_window;
 WINDOW *server_banner_window;
 WINDOW *log_window;
 
-struct Log log[500];
+struct Log *log;
 struct User (*user)[MAX_USER];
 
 int current_server_id = 0;
 time_t current_time;
 int server_key = 0;
 int *servers_ids;
-char foo[100];
-int status;
-int userSID;
+int userSID, logSID;
 int log_descriptor;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
+
+void hearthbit_starter();
 
 void setup(char *config_path)
 {
@@ -28,26 +30,24 @@ void setup(char *config_path)
     servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
-    init_log(log);
     if (current_server_id == -1)
     {
-        perror("Blad otwierania kolejki serwera");
+        perror(TR_QUEUE_ERROR);
+        exit(1);
     }
+    hearthbit_starter();
 }
 void end_of_work()
 {
     msgctl(current_server_id, IPC_RMID, NULL);
     shmctl(current_server_id + 1, IPC_RMID, NULL);
+    shmctl(current_server_id + 2, IPC_RMID, NULL);
     shmdt(user);
-    printf("\nSerwer zostal zamkniety\n");
+    shmdt(log);
+    printf(TR_SERVER_STOPPED);
     endwin();
     exit(0);
 }
-
-void refresh_status_client_window();
-void window_init();
-void fill_log();
-void hearthbit_section();
 
 int main(int argc, char *argv[])
 {
@@ -63,21 +63,19 @@ int main(int argc, char *argv[])
 
     // cykl życia serwera
     struct Mess request, response;
+    int status;
     clear_mess(&request);
     clear_mess(&response);
 
-    add_to_log(log, time(NULL), "Serwer wystartowal", "localhost", "gotowy na odbior wiadomosci");
-
-    hearthbit_section();
-    window_init();
-
     while (1)
     {
+        refresh();
+
+        window_init(user, log, server_key, server_banner_window, info_window, log_window);
+        
         status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
         if (status == -1)
         {
-            refresh();
-            window_init();
             sleep(1);
             continue;
         }
@@ -97,7 +95,7 @@ int main(int argc, char *argv[])
                 msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
                 char from_client_string[20];
                 sprintf(from_client_string, "%d", request.from_client);
-                add_to_log(log, time(NULL), "Dolaczyl uzytkownik", from_client_string, request.from_client_name);
+                add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name);
             }
             break;
 
@@ -108,122 +106,15 @@ int main(int argc, char *argv[])
             sleep(1);
             break;
         }
-        refresh();
-        window_init();
         clear_mess(&request);
         clear_mess(&response);
     }
+
     msgctl(current_server_id, IPC_RMID, NULL);
     return 0;
 }
 
-void window_init()
-{
-    endwin();
-    refresh();
-    initscr();
-    curs_set(0);
-    start_color();
-    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(2, COLOR_BLUE, COLOR_BLACK);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
-    /*
-        Deklaracja:
-        Informacja o programie
-    */
-    server_banner_window = newwin(4, 0, 0, 0);
-    refresh();
-    box(server_banner_window, 0, 0);
-    char *project_name = "Projekt PSiW serwer 0.0.1";
-    mvwprintw(server_banner_window, 1, (COLS - strlen(project_name)) / 2, project_name);
-    boxDescription(server_banner_window, "Informacje");
-    char *authors = "Bartosz Adamczyk (148163) i Kacper Garncarek (148114)";
-    mvwprintw(server_banner_window, 2, (COLS - strlen(authors)) / 2, authors);
-
-    /*
-        Deklaracja:
-        Podstawowe informacje o serwerze
-
-        typu z jakimi innymi serwerami jest połączony
-        jego adres
-    */
-    info_window = newwin(0, COLS / 4, 5, 0);
-    refresh();
-    box(info_window, 0, 0);
-    char *adress = "Klucz serwera: ";
-    mvwprintw(info_window, 2, 2, adress);
-    char server_key_string[20];
-    sprintf(server_key_string, "%d", server_key);
-    mvwprintw(info_window, 3, 3, server_key_string);
-    mvwprintw(info_window, 4, 2, "Liczba klientow na serwerze: ");
-    mvwprintw(info_window, 6, 2, "Lista klientow: ");
-
-    /*
-        Deklaracja:
-        Logi
-    */
-    log_window = newwin(0, COLS - 2 - (COLS / 4), 5, (COLS / 4) + 2);
-    refresh();
-
-    fill_log();
-
-    refresh_status_client_window(user);
-    wrefresh(info_window);
-    wrefresh(server_banner_window);
-    wrefresh(log_window);
-}
-
-void fill_log()
-{
-    wmove(log_window, 1, 1);
-    wclrtobot(log_window);
-    int x, y;
-    getmaxyx(log_window, y, x);
-    char foo[50], foo2[200];
-    int log_index = 0;
-
-    for (int i = y - 2; i > 0; i--)
-    {
-        if (log[log_index].empty == 0)
-        {
-            strftime(foo, 50, "[%d/%m/%Y %H:%M:%S]", localtime(&log[log_index].time));
-            wattron(log_window, COLOR_PAIR(1));
-            mvwprintw(log_window, i, 2, foo);
-            wattroff(log_window, COLOR_PAIR(1));
-
-            wattron(log_window, COLOR_PAIR(2));
-            sprintf(foo2, "<%s> %s:", log[log_index].from, log[log_index].head);
-            mvwprintw(log_window, i, 3 + strlen(foo), foo2);
-            wattroff(log_window, COLOR_PAIR(2));
-            mvwprintw(log_window, i, 4 + strlen(foo) + strlen(foo2), log[log_index].body);
-
-            log_index++;
-        }
-        else
-            break;
-    }
-    box(log_window, 0, 0);
-    boxDescription(log_window, "Zmiany");
-}
-void refresh_status_client_window()
-{
-    int current_user_num;
-    current_user_number(&current_user_num, user);
-    sprintf(foo, "%d", current_user_num);
-    wmove(info_window, 5, 0);
-    wclrtoeol(info_window);
-    mvwprintw(info_window, 5, 3, foo);
-    for (int i = 0; i < 5; i++)
-    {
-        wmove(info_window, 7 + i, 0);
-        wclrtoeol(info_window);
-        mvwprintw(info_window, 7 + i, 3, user[i]->nick);
-    }
-    box(info_window, 0, 0);
-    boxDescription(info_window, "Status serwera");
-}
-
-void hearthbit_section()
+void hearthbit_starter()
 {
     struct Mess request, response;
     clear_mess(&request);
@@ -236,7 +127,20 @@ void hearthbit_section()
             perror("shmget");
             exit(1);
         }
+        if ((logSID = shmget(current_server_id + 2, sizeof(struct Log) * MAX_LOG, IPC_CREAT | 0644)) == -1)
+        {
+            perror("shmget");
+            exit(1);
+        }
         user = (struct User *)shmat(userSID, 0, 0);
+        log = (struct Log *)shmat(logSID, 0, 0);
+
+        init_log(log);
+
+        char server_id_string[255];
+        sprintf(server_id_string, "%d", current_server_id);
+        add_to_log(log, time(NULL), TR_SERVER_STARTED, server_id_string, TR_READY);
+
         int client_number, status;
         sleep(1);
         while (getppid() != 1)
@@ -252,6 +156,9 @@ void hearthbit_section()
                 status = msgrcv(current_server_id, &response, sizeof(response) - sizeof(long), 20, IPC_NOWAIT);
                 if (status == -1 || request.body[0] != response.body[0])
                 {
+                    char from_client_string[20];
+                    sprintf(from_client_string, "%d", user[i]->queue_id);
+                    add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i]->nick);
                     logout(user[i]->queue_id, user, &status);
                 }
                 clear_mess(&request);
@@ -260,13 +167,21 @@ void hearthbit_section()
         }
         exit(1);
     }
+    
+    if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
+    {
+        perror("shmget");
+        exit(1);
+    }
 
-    if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | IPC_EXCL | 0644)) == -1)
+    if ((logSID = shmget(current_server_id + 2, sizeof(struct Log) * 500, IPC_CREAT | 0644)) == -1)
     {
         perror("shmget");
         exit(1);
     }
 
     user = (struct User *)shmat(userSID, 0, 0);
+    log = shmat(logSID, 0, 0);
+
     init_user_struct(user);
 }

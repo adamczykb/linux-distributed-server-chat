@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "trans.h"
 
 #ifndef PSIW_SETUP_H
 #define PSIW_SETUP_H

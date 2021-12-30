@@ -93,7 +93,7 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
 
     if (*server_key == 0) //jezel brak wolnych miejsc to wyrzucamy komunikat
     {
-        printf("Brak wolnych kluczy dla tego servera w config.txt\n");
+        printf(TR_SERVER_NO_KEYS);
         exit(-1);
     }
 }
