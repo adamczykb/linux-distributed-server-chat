@@ -32,8 +32,9 @@ void get_server_keys(char *config_path)
 
 void end_of_work()
 {
+    endwin();
     msgctl(client_queue_id, IPC_RMID, NULL);
-    printf("\nKlient zostal zamkniety\n");
+    printf("Klient zostal zamkniety\n");
     exit(0);
 }
 
@@ -65,22 +66,12 @@ int main(int argc, char *argv[])
     sprintf(log_pathname, "./logs/%s_client.log", nick);
     int log_descriptor = open(log_pathname, O_CREAT | O_APPEND | O_WRONLY, 0644);
 
-    struct Mess request, response;
-
     if (fork() == 0)
     {
-        while (getppid() != 1)
-        {
-            msgrcv(client_queue_id, &request, sizeof(request) - sizeof(long), 20, 0);
-            strcpy(response.body, request.body);
-            response.msgid = 20;
-            response.from_client = client_queue_id;
-            strcpy(response.from_client_name, nick);
-            msgsnd(server_queue_id, &response, sizeof(response) - sizeof(long), 0);
-        }
-        exit(0);
+        heartbeat(client_queue_id, nick, server_queue_id);
     }
 
+    struct Mess request, response;
     while (1)
     {
         clear_mess(&request);
@@ -112,6 +103,7 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
 void main_screen()
 {
     endwin();
@@ -167,7 +159,6 @@ void nick_input_screen()
     wrefresh(single_window);
     mvwprintw(single_window, 3, 2, nick);
 }
-
 void choose_server_screen()
 {
     endwin();
@@ -237,3 +228,4 @@ void choose_server_screen()
     }
     choosed_server_key = server_keys[highlight];
 }
+

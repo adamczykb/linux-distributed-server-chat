@@ -27,3 +27,18 @@ void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *
     else
         *result = -1;
 }
+
+void heartbeat(int client_queue_id,  char* nick, int server_queue_id){
+    struct Mess response;
+    struct Mess request;
+    while (getppid() != 1)
+        {
+            msgrcv(client_queue_id, &request, sizeof(request) - sizeof(long), 20, 0);
+            strcpy(response.body, request.body);
+            response.msgid = 20;
+            response.from_client = client_queue_id;
+            strcpy(response.from_client_name, nick);
+            msgsnd(server_queue_id, &response, sizeof(response) - sizeof(long), 0);
+        }
+        exit(0);
+}

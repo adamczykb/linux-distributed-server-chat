@@ -21,7 +21,7 @@ int userSID, logSID;
 int log_descriptor;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
 
-void hearthbit_starter();
+void heartbeat_starter();
 
 void setup(char *config_path)
 {
@@ -35,7 +35,7 @@ void setup(char *config_path)
         perror(TR_QUEUE_ERROR);
         exit(1);
     }
-    hearthbit_starter();
+    heartbeat_starter();
 }
 void end_of_work()
 {
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void hearthbit_starter()
+void heartbeat_starter()
 {
     struct Mess request, response;
     clear_mess(&request);
