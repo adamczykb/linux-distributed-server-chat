@@ -9,9 +9,11 @@
 WINDOW *info_window;
 WINDOW *server_banner_window;
 WINDOW *log_window;
+WINDOW *background;
+
 
 struct Log *log;
-struct User (*user)[MAX_USER];
+struct User (*user)[MAX_USER]; 
 
 int current_server_id = 0;
 time_t current_time;
@@ -66,17 +68,23 @@ int main(int argc, char *argv[])
     int status;
     clear_mess(&request);
     clear_mess(&response);
-
+    endwin();
+    refresh();
+    initscr();
+    curs_set(0);
+    start_color();
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(2, COLOR_BLUE, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
     while (1)
     {
-        refresh();
 
-        window_init(user, log, server_key, server_banner_window, info_window, log_window);
+        window_init(user, log, server_key,background, server_banner_window, info_window, log_window);
         
         status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
         if (status == -1)
         {
-            sleep(1);
+            usleep(100*1000);
             continue;
         }
         current_time = time(NULL);

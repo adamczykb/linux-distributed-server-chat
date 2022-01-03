@@ -2,7 +2,7 @@
 #define PSIW_TRANS_H
 
 
-#define TR_PROJECT_HEAD "Projekt PSiW serwer 0.0.1"
+#define TR_PROJECT_HEAD "'Projekt PSiW' serwer 0.0.1"
 #define TR_PROJECT_AUTHORS "Bartosz Adamczyk (148163) i Kacper Garncarek (148114)"
 
 #define TR_QUEUE_ERROR "Blad otwierania kolejki serwera"

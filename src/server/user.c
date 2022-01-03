@@ -49,7 +49,7 @@ void logout(int queue_id, struct User (*user)[MAX_USER], int *status)
 {
     for (int i = 0; i < MAX_USER; i++)
     {
-        if (user[i]->queue_id)
+        if (user[i]->queue_id==queue_id)
         {
             for (int j = i; j < MAX_USER - 1; j++)
             {

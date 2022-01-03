@@ -1,20 +1,14 @@
 #include "../../inc/server/ui.h"
 // funkcja, która umieszcza ciąg znaków na ramce wyswietlanego okienka
 
-void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key, WINDOW *server_banner_window, WINDOW *info_window, WINDOW *log_window)
+void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,WINDOW* background, WINDOW *server_banner_window, WINDOW *info_window, WINDOW *log_window)
 {
-    endwin();
-    refresh();
-    initscr();
-    curs_set(0);
-    start_color();
-    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(2, COLOR_BLUE, COLOR_BLACK);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
+   
     /*
         Deklaracja:
         Informacja o programie
     */
+    background = newwin(0, 0, 0, 0);
     server_banner_window = newwin(4, 0, 0, 0);
     refresh();
     box(server_banner_window, 0, 0);
@@ -48,7 +42,7 @@ void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,
     */
 
     log_window = newwin(0, COLS - 2 - (COLS / 4), 5, (COLS / 4) + 2);
-    refresh();
+    wrefresh(background);
 
     fill_log(log, log_window);
 
@@ -56,6 +50,7 @@ void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,
     wrefresh(info_window);
     wrefresh(server_banner_window);
     wrefresh(log_window);
+    
 }
 
 void fill_log(struct Log *log, WINDOW *log_window)

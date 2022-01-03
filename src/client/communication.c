@@ -1,5 +1,5 @@
-#include "../../inc/client/communication.h"
 #include "../../inc/common.h"
+#include "../../inc/client/communication.h"
 
 void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *result)
 {
@@ -40,5 +40,5 @@ void heartbeat(int client_queue_id,  char* nick, int server_queue_id){
             strcpy(response.from_client_name, nick);
             msgsnd(server_queue_id, &response, sizeof(response) - sizeof(long), 0);
         }
-        exit(0);
+    exit(0);
 }
