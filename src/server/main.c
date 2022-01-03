@@ -170,7 +170,10 @@ void heartbeat_starter()
                 }
                 clear_mess(&request);
                 clear_mess(&response);
+
             }
+            sleep(1);
+
         }
         exit(1);
     }
