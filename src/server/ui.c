@@ -10,7 +10,6 @@ void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,
     */
     background = newwin(0, 0, 0, 0);
     server_banner_window = newwin(4, 0, 0, 0);
-    refresh();
     box(server_banner_window, 0, 0);
     mvwprintw(server_banner_window, 1, (COLS - strlen(TR_PROJECT_HEAD)) / 2, TR_PROJECT_HEAD);
     boxDescription(server_banner_window, TR_WIN_DESC_INFO);
@@ -25,7 +24,6 @@ void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,
     */
 
     info_window = newwin(0, COLS / 4, 5, 0);
-    refresh();
     box(info_window, 0, 0);
 
     mvwprintw(info_window, 2, 2, TR_SERVER_INFO_KEY);

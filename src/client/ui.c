@@ -1,5 +1,14 @@
 #include "../../inc/client/ui.h"
 
+void init_screen(){
+endwin();
+    initscr();
+    nodelay(stdscr, true);
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(2, COLOR_BLUE, COLOR_BLACK);
+    init_pair(3, COLOR_BLACK, COLOR_RED);
+    init_pair(4, COLOR_WHITE, COLOR_MAGENTA);
+}
 void nick_input_screen(WINDOW *single_window,char *nick)
 {
     char *enter = "< ENTER >";
@@ -100,4 +109,64 @@ void choose_server_screen(WINDOW *single_window,int nr_of_servers, char *komunik
         }
     }
     *choosed_server_key = server_keys[highlight];
+}
+void text_type(WINDOW *operation_window, char *text,char *alert)
+{
+    int x, y;
+    getmaxyx(operation_window, y, x);
+    char foo[1000];
+    sprintf(foo, "> %s", text);
+    mvwprintw(operation_window, y - 2, 2, foo);
+    wattron(operation_window, COLOR_PAIR(3));
+    mvwprintw(operation_window, y - 3, 2, alert);
+    wattroff(operation_window, COLOR_PAIR(3));
+}
+
+void client_list(WINDOW *client_list_window, struct User *users, int n, int cursor_index[2])
+{
+    int i = 0;
+    mvwprintw(client_list_window, 2 + i, 2, "Wybierz uzytkownika i kliknij [ENTER]");
+    for (int i = 0; i < n; i++)
+    {
+        if (users[i].free==1)
+            break;
+        if (cursor_index[1] == 0 && cursor_index[0] == i)
+            wattron(client_list_window, COLOR_PAIR(4));
+        mvwprintw(client_list_window, 3 + i, 3, users[i].nick);
+        wattroff(client_list_window, COLOR_PAIR(4));
+    }
+}
+
+void channel_options(WINDOW *channel_list_window, struct Channel *channels, int n, int cursor_index[2])
+{
+    int i = 0, pos = 0;
+    for (i = 0; i < n; i++)
+    {
+        if (channels[i].free)
+            break;
+        if (cursor_index[1] == 1 && cursor_index[0] == pos)
+        {
+            wattron(channel_list_window, COLOR_PAIR(4));
+            mvwprintw(channel_list_window, 2 + i, 2, channels[i].name);
+            wattroff(channel_list_window, COLOR_PAIR(4));
+            mvwprintw(channel_list_window, 3 + i, 3, "Polaczeni uzytkownicy:");
+            int j = 0;
+            for (j = 0; j < num_of_users(channels[i].users, 10); j++)
+            {
+                mvwprintw(channel_list_window, 4 + i + j, 4, channels[i].users[j].nick);
+            }
+            mvwprintw(channel_list_window, 5 + i + j, 3, "[ENTER] Dolacz");
+            mvwprintw(channel_list_window, 6 + i + j, 3, "[e] Opusc kanal");
+            i += 4 + j;
+            n += j + 4;
+        }
+        else
+            mvwprintw(channel_list_window, 2 + i, 2, channels[i].name);
+        pos++;
+    }
+    (++i);
+    if (cursor_index[1] == 1 && cursor_index[0] == pos)
+        wattron(channel_list_window, COLOR_PAIR(4));
+    mvwprintw(channel_list_window, 2 + i, 2, "+ Utworz kanal");
+    wattroff(channel_list_window, COLOR_PAIR(4));
 }

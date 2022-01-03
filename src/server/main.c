@@ -68,14 +68,15 @@ int main(int argc, char *argv[])
     int status;
     clear_mess(&request);
     clear_mess(&response);
-    endwin();
-    refresh();
     initscr();
     curs_set(0);
     start_color();
     init_pair(1, COLOR_YELLOW, COLOR_BLACK);
     init_pair(2, COLOR_BLUE, COLOR_BLACK);
     init_pair(3, COLOR_RED, COLOR_BLACK);
+    int reg_outcome;
+    char foo[2048];
+
     while (1)
     {
 
@@ -93,7 +94,6 @@ int main(int argc, char *argv[])
         case 0:
             break;
         case 2: // wymiana informacji -> rejestracja użytkownika
-            int reg_outcome;
             registration(request.from_client, request.from_client_name, user, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
             response.msgid = 2;
             response.from_server = current_server_id;
@@ -108,7 +108,6 @@ int main(int argc, char *argv[])
             break;
 
         default: // obsluga blednego pakietu
-            char foo[2048];
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nClient name:%s\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_client, request.from_client_name);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
