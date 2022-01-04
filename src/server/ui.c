@@ -1,7 +1,7 @@
 #include "../../inc/server/ui.h"
 // funkcja, która umieszcza ciąg znaków na ramce wyswietlanego okienka
 
-void window_init(struct User (*user)[MAX_USER], struct Log *log, int server_key,WINDOW* background, WINDOW *server_banner_window, WINDOW *info_window, WINDOW *log_window)
+void window_init(struct User *user, struct Log *log, int server_key,WINDOW* background, WINDOW *server_banner_window, WINDOW *info_window, WINDOW *log_window)
 {
    
     /*
@@ -64,17 +64,27 @@ void fill_log(struct Log *log, WINDOW *log_window)
     {
         if (log[log_index].empty == 0)
         {
-            strftime(foo, 50, "[%d/%m/%Y %H:%M:%S]", localtime(&log[log_index].time));
-            wattron(log_window, COLOR_PAIR(1));
-            mvwprintw(log_window, i, 2, foo);
-            wattroff(log_window, COLOR_PAIR(1));
+            if(log[log_index].error == 1){
+                strftime(foo, 50, "[%d/%m/%Y %H:%M:%S]", localtime(&log[log_index].time));
+                wattron(log_window, COLOR_PAIR(3));
+                mvwprintw(log_window, i, 2, foo);
+                sprintf(foo2, "<%s> %s:", "ERROR", log[log_index].head);
+                mvwprintw(log_window, i, 3 + strlen(foo), foo2);
+                mvwprintw(log_window, i, 4 + strlen(foo) + strlen(foo2), log[log_index].body);
+                wattroff(log_window, COLOR_PAIR(3));
 
-            wattron(log_window, COLOR_PAIR(2));
-            sprintf(foo2, "<%s> %s:", log[log_index].from, log[log_index].head);
-            mvwprintw(log_window, i, 3 + strlen(foo), foo2);
-            wattroff(log_window, COLOR_PAIR(2));
-            mvwprintw(log_window, i, 4 + strlen(foo) + strlen(foo2), log[log_index].body);
+            }else{
+                strftime(foo, 50, "[%d/%m/%Y %H:%M:%S]", localtime(&log[log_index].time));
+                wattron(log_window, COLOR_PAIR(1));
+                mvwprintw(log_window, i, 2, foo);
+                wattroff(log_window, COLOR_PAIR(1));
 
+                wattron(log_window, COLOR_PAIR(2));
+                sprintf(foo2, "<%s> %s:", log[log_index].from, log[log_index].head);
+                mvwprintw(log_window, i, 3 + strlen(foo), foo2);
+                wattroff(log_window, COLOR_PAIR(2));
+                mvwprintw(log_window, i, 4 + strlen(foo) + strlen(foo2), log[log_index].body);
+            }
             log_index++;
         }
         else
@@ -83,7 +93,7 @@ void fill_log(struct Log *log, WINDOW *log_window)
     box(log_window, 0, 0);
     boxDescription(log_window, TR_WIN_DESC_LOG);
 }
-void refresh_status_client_window(struct User (*user)[MAX_USER], WINDOW *info_window)
+void refresh_status_client_window(struct User *user, WINDOW *info_window)
 {
     int current_user_num;
     char current_user_num_string[100];
@@ -96,7 +106,7 @@ void refresh_status_client_window(struct User (*user)[MAX_USER], WINDOW *info_wi
     {
         wmove(info_window, 7 + i, 0);
         wclrtoeol(info_window);
-        mvwprintw(info_window, 7 + i, 3, user[i]->nick);
+        mvwprintw(info_window, 7 + i, 3, user[i].nick);
     }
     box(info_window, 0, 0);
     boxDescription(info_window, TR_WIN_DESC_STATUS);

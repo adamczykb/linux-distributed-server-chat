@@ -9,7 +9,7 @@ int choosed_server_key = 0;
 int *server_keys;
 char nick[100] = "";
 char op_window_title[100] = "Komunikator";
-char input_text[MAX_MSG_LEN] = "TEST";
+char input_text[MAX_MSG_LEN] = "";
 
 enum typing_target input_target;
 enum message_type mess_type;
@@ -18,6 +18,7 @@ int target_index = 0; // indeks dla tablicy struktu
 
 struct User clients[50];
 struct Channel channels[50];
+struct Mess request, response;
 
 int cursor_index[3];
 
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
 
     get_server_keys("config.in");
     init_user_struct(clients, 50);
-    init_channel_struct(channels, 50);
+    init_channel_struct(channels);
 
     while (strlen(nick) == 0)
     {
@@ -113,7 +114,6 @@ int main(int argc, char *argv[])
     {
         heartbeat(client_queue_id, nick, server_queue_id);
     }
-    struct Mess request, response;
     strcpy(alert, "");
     init_screen();
     while (1)
@@ -132,6 +132,9 @@ int main(int argc, char *argv[])
         switch (response.msgid)
         {
         case 0:
+            break;
+        case 3:
+            new_channel(channels,&response);
             break;
         default: // obsluga blednego pakietu
             char foo[2048];
@@ -159,13 +162,13 @@ void main_screen()
         if (cursor_index[1] == 0 && cursor_index[0] < 0)
             cursor_index[0] = num_of_users(clients, 50) - 1;
         if (cursor_index[1] == 1 && cursor_index[0] < 0)
-            cursor_index[0] = num_of_channels(channels, 50);
+            cursor_index[0] = num_of_channels(channels);
         break;
     case KEY_DOWN:
         cursor_index[0]++;
         if (cursor_index[1] == 0 && cursor_index[0] >= num_of_users(clients, 50))
             cursor_index[0] = 0;
-        if (cursor_index[1] == 1 && cursor_index[0] > num_of_channels(channels, 50))
+        if (cursor_index[1] == 1 && cursor_index[0] > num_of_channels(channels))
             cursor_index[0] = 0;
         break;
     case KEY_LEFT:
@@ -188,9 +191,30 @@ void main_screen()
                 break;
             case TYPING_TARGET_NEW_CHANNEL:
                 //tu bedzie lecial pakiet do serwera i czekal na odpowiedz i od razu otworzy okno wiadomosci
-                input_target = TYPING_TARGET_NEW_MESSAGE;
+                clear_mess(&request);
+                clear_mess(&response);
+                
+                request.msgid = 3;
+                request.from_client = client_queue_id;
+                request.timestamp = time(NULL);
+                strcpy(request.from_client_name, nick);
+                strcpy(request.body, input_text);
                 strcpy(input_text, "");
+                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
                 strcpy(alert, "");
+
+                msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 3, 0);
+                new_channel(channels,&response);
+
+                input_target = TYPING_TARGET_NEW_MESSAGE;
+                mess_type = MSG_TYPE_CHANNEL;
+ 
+                target_id = channels[num_of_channels(channels)-1].id;
+                target_index = num_of_channels(channels)-1;
+                cursor_index[1] = 2;
+                cursor_index[0]=num_of_channels(channels)-1;
+
+                sprintf(op_window_title,"Rozmowa na kanale %s",channels[cursor_index[0]].name);
                 break;
             case TYPING_TARGET_NEW_MESSAGE:
                 //tu bedzie lecial pakiet do serwera
@@ -199,7 +223,7 @@ void main_screen()
                 break;
             }
         }
-        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(clients, 50))
+        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(clients,50))
         {
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_MESSAGE;
@@ -211,26 +235,29 @@ void main_screen()
 
 
         }
-        if (cursor_index[1] == 1 && cursor_index[0] < num_of_channels(channels, 50))
+        if (cursor_index[1] == 1 && cursor_index[0] < num_of_channels(channels))
         {
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_MESSAGE;
             mess_type = MSG_TYPE_CHANNEL;
-            target_id = channels[cursor_index[0]].queue_id;
+            target_id = channels[cursor_index[0]].id;
             target_index = cursor_index[0];
             cursor_index[1] = 2;
             sprintf(op_window_title,"Rozmowa na kanale %s",channels[cursor_index[0]].name);
         }
-        if (cursor_index[1] == 1 && cursor_index[0] == num_of_channels(channels, 50))
+        if (cursor_index[1] == 1 && cursor_index[0] == num_of_channels(channels))
         {
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_CHANNEL;
+            mess_type = MSG_TYPE_NO_DECLARED;
             cursor_index[1] = 2;
+            strcpy(op_window_title,"Tworzenie nowego kanalu");
             strcpy(alert, "Podaj nazwe tworzonego kanalu!");
         }
         break;
     case 8:
     case 127:
+    case KEY_BACKSPACE:
         if (strlen(input_text) > 0 && cursor_index[1] == 2)
             input_text[strlen(input_text) - 1] = 0;
         break;
