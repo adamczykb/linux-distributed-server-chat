@@ -61,3 +61,37 @@ void boxDescription(WINDOW *pwin, const char *title)
     waddstr(pwin, title);
     waddch(pwin, ' ');
 }
+
+void add_user_to_channel(struct Channel *channels, struct Mess *mess,int *result){
+    *result=-1;
+    for(int i =0;i<MAX_CHANNEL;i++){
+        if(channels[i].id==mess->to_chanel){
+            for(int j=0;j<10;j++){
+                if(channels[i].users[j].free==1){
+                    channels[i].users[j].free=0;
+                    strcpy(channels[i].users[j].nick,mess->from_client_name);
+                    channels[i].users[j].queue_id=mess->from_client;
+                    *result=0;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+}
+void add_msg_to_channel(struct Channel *channels, struct Mess *mess){
+    int i;
+    for(i=0;i<MAX_CHANNEL;i++){
+        if(channels[i].id==mess->to_chanel){
+            for(int j =98;j>=0;j--){
+                channels[i].messages[j+1]=channels[i].messages[j];
+            }
+            strcpy(channels[i].messages[0].body,mess->body);
+            strcpy(channels[i].messages[0].from_client_name,mess->from_client_name);
+            channels[i].messages[0].timestamp=mess->timestamp;
+            channels[i].messages[0].from_client=mess->from_client;
+            channels[i].messages[0].from_server=mess->from_server;
+            break;
+        }
+    }
+}

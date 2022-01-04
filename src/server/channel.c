@@ -21,8 +21,14 @@ void add_new_channel(struct Channel *channels, int *id, struct Mess *mess)
     {
         clear_mess(&channels[num].messages[j]);
     }
+    strcpy(channels[num].messages[0].body,mess->body);
+    channels[num].messages[0].timestamp=time(NULL);
+    channels[num].messages[0].from_client=0;
+    strcpy(channels[num].messages[0].from_client_name,"Utworzono nowy kanal");
     *id = num+1;
 }
+
+
 
 void remove_from_channel_list_name(struct Channel *channels, char *name)
 {
@@ -85,6 +91,38 @@ void init_channel_struct(struct Channel *channel)
         for (int j = 0; j < 100; j++)
         {
             clear_mess(&channel[i].messages[j]);
+        }
+    }
+}
+
+void send_last_ten_msg_from_channel(struct Channel *channel,int channel_id,int user_queue,int current_server_id){
+    struct Mess request;
+    request.msgid = 11;
+    request.from_server=current_server_id;
+    request.to_chanel =channel_id;
+    for(int i=0;i<MAX_CHANNEL;i++){
+        if(channel[i].id==channel_id){
+            for(int j=9;j>=0;j--){
+                request.from_client = channel[i].messages[j].from_client;
+                request.timestamp = channel[i].messages[j].timestamp;
+                strcpy(request.from_client_name, channel[i].messages[j].from_client_name);
+                strcpy(request.body, channel[i].messages[j].body);
+                msgsnd(user_queue, &request, sizeof(request) - sizeof(long), 0);
+            }
+            return;
+        }
+    }
+}
+void send_channel_msg_to_users(struct Channel *channels, struct Mess request){
+
+    for(int i=0;i<MAX_CHANNEL;i++){
+        if(channels[i].id==request.to_chanel){
+            for(int j=0;j<10;j++){
+                if(channels[i].users[j].queue_id!=0){
+                    msgsnd(channels[i].users[j].queue_id, &request, sizeof(request) - sizeof(long), 0);
+                }
+            }
+            break;
         }
     }
 }

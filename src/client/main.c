@@ -24,6 +24,8 @@ int cursor_index[3];
 
 char alert[100] = "";
 int status;
+int result;
+
 time_t current_time;
 
 int nr_of_serwers;
@@ -59,7 +61,6 @@ void end_of_work()
 void load_messages_to_window(WINDOW *operation_window, struct Mess *mess)
 {
     int x, y;
-
     getmaxyx(operation_window, y, x);
     for (int i = 0; i < 100; i++)
     {
@@ -72,7 +73,7 @@ void load_messages_to_window(WINDOW *operation_window, struct Mess *mess)
         wattroff(operation_window, COLOR_PAIR(1));
 
         wattron(operation_window, COLOR_PAIR(2));
-        sprintf(foo2, "<%s> %s:", mess[i].from_client, mess[i].from_client_name);
+        sprintf(foo2, "<%d> %s:", mess[i].from_client, mess[i].from_client_name);
         mvwprintw(operation_window, y - 4 - i, 3 + strlen(foo), foo2);
         wattroff(operation_window, COLOR_PAIR(2));
         mvwprintw(operation_window, y - 4 - i, 4 + strlen(foo) + strlen(foo2), mess[i].body);
@@ -134,11 +135,17 @@ int main(int argc, char *argv[])
         case 0:
             break;
         case 3:
-            new_channel(channels,&response);
+            new_channel(channels, &response);
+            break;
+        case 4:
+            add_user_to_channel(channels, &response, &result);
+            break;
+        case 11:
+            add_msg_to_channel(channels, &response);
             break;
         default: // obsluga blednego pakietu
             char foo[2048];
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\n-----------", ctime(&current_time), response.msgid, response.body, response.timestamp, response.from_server);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nChannel id: %d-----------\n", ctime(&current_time), response.msgid, response.body, response.timestamp, response.from_server,response.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
             break;
@@ -193,7 +200,7 @@ void main_screen()
                 //tu bedzie lecial pakiet do serwera i czekal na odpowiedz i od razu otworzy okno wiadomosci
                 clear_mess(&request);
                 clear_mess(&response);
-                
+
                 request.msgid = 3;
                 request.from_client = client_queue_id;
                 request.timestamp = time(NULL);
@@ -204,26 +211,40 @@ void main_screen()
                 strcpy(alert, "");
 
                 msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 3, 0);
-                new_channel(channels,&response);
+                new_channel(channels, &response);
 
                 input_target = TYPING_TARGET_NEW_MESSAGE;
                 mess_type = MSG_TYPE_CHANNEL;
- 
-                target_id = channels[num_of_channels(channels)-1].id;
-                target_index = num_of_channels(channels)-1;
-                cursor_index[1] = 2;
-                cursor_index[0]=num_of_channels(channels)-1;
 
-                sprintf(op_window_title,"Rozmowa na kanale %s",channels[cursor_index[0]].name);
+                channels[num_of_channels(channels) - 1].usr_signed = 1; // dany klient jest tu zarejestrowany
+
+                target_id = channels[num_of_channels(channels) - 1].id;
+                target_index = num_of_channels(channels) - 1;
+                cursor_index[1] = 2;
+                cursor_index[0] = num_of_channels(channels) - 1;
+
+                sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
                 break;
             case TYPING_TARGET_NEW_MESSAGE:
-                //tu bedzie lecial pakiet do serwera
+                if(strlen(input_text)>0){
+                clear_mess(&request);
+                clear_mess(&response);
+                request.msgid = 11;
+                request.from_client = client_queue_id;
+                request.timestamp = time(NULL);
+                strcpy(request.from_client_name, nick);
+                strcpy(request.body, input_text);
+                request.to_chanel=target_id;
+                strcpy(input_text, "");
+                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+                strcpy(alert, "");
+                }
                 break;
             default:
                 break;
             }
         }
-        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(clients,50))
+        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(clients, 50))
         {
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_MESSAGE;
@@ -231,9 +252,7 @@ void main_screen()
             target_id = clients[cursor_index[0]].queue_id;
             target_index = cursor_index[0];
             cursor_index[1] = 2;
-            sprintf(op_window_title,"Rozmowa z %s",clients[cursor_index[0]].nick);
-
-
+            sprintf(op_window_title, "Rozmowa z %s", clients[cursor_index[0]].nick);
         }
         if (cursor_index[1] == 1 && cursor_index[0] < num_of_channels(channels))
         {
@@ -243,7 +262,30 @@ void main_screen()
             target_id = channels[cursor_index[0]].id;
             target_index = cursor_index[0];
             cursor_index[1] = 2;
-            sprintf(op_window_title,"Rozmowa na kanale %s",channels[cursor_index[0]].name);
+            if (channels[cursor_index[0]].usr_signed == 0)
+            {
+                clear_mess(&request);
+                clear_mess(&response);
+
+                request.msgid = 4;
+                request.from_client = client_queue_id;
+                request.to_chanel = channels[cursor_index[0]].id;
+                request.timestamp = time(NULL);
+                strcpy(request.from_client_name, nick);
+                strcpy(request.body, "");
+                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0); //wysylanie prosby o zapisanie do kanalu
+
+                msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 6, 0); //odpowiedz o akceptacji
+                if (response.body[0] != '0')
+                {
+                    strcpy(alert, "Wystapil nieoczekiwany blad");
+                }
+                else
+                {
+                    channels[cursor_index[0]].usr_signed = 1;
+                    sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
+                }
+            }
         }
         if (cursor_index[1] == 1 && cursor_index[0] == num_of_channels(channels))
         {
@@ -251,7 +293,7 @@ void main_screen()
             input_target = TYPING_TARGET_NEW_CHANNEL;
             mess_type = MSG_TYPE_NO_DECLARED;
             cursor_index[1] = 2;
-            strcpy(op_window_title,"Tworzenie nowego kanalu");
+            strcpy(op_window_title, "Tworzenie nowego kanalu");
             strcpy(alert, "Podaj nazwe tworzonego kanalu!");
         }
         break;

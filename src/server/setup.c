@@ -32,6 +32,7 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
         execv(args[0], args);
     }
     close(fd[1]);
+    wait(NULL);
     char bufor[1024];
     int nr_of_ipcs_lines = 0;
     for (int i = 0; read(fd[0], &bufor[i], 1) > 0; i++)

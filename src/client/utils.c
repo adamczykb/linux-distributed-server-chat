@@ -58,6 +58,7 @@ void new_channel(struct Channel *channels, struct Mess *mess)
     
     channels[num].id=mess->to_chanel;
     channels[num].free=0;
+    channels[num].usr_signed=0;
     strcpy(channels[num].name,mess->body);
     
     for (int j = 0; j < 100; j++)
@@ -70,3 +71,4 @@ void new_channel(struct Channel *channels, struct Mess *mess)
     strcpy(channels[num].users[0].nick,mess->from_client_name);
     channels[num].users[0].queue_id=mess->from_client;
 }
+

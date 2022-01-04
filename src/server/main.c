@@ -16,6 +16,8 @@ struct Log *log;
 struct Channel *channels;
 struct User *user;
 
+int result;
+
 int current_server_id = 0;
 time_t current_time;
 int server_key = 0;
@@ -127,11 +129,45 @@ int main(int argc, char *argv[])
             strcpy(response.from_client_name,request.from_client_name);
             response.to_chanel = channel_id;
             strcpy(response.body, request.body);
-            for(int i=0;i<MAX_USER;i++)
-                msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
+            for(int i=0;i<MAX_USER;i++){
+                if(user[i].queue_id!=0)
+                    msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
+            }
+            if(channel_id != -1){
+                send_last_ten_msg_from_channel(channels,channel_id,request.from_client,current_server_id);
+            }
+            break;
+        case 4:
+            add_user_to_channel(channels,&request,&result);
+            response.msgid = 6;
+            response.timestamp = time(NULL);
+            response.from_server = current_server_id;
+            response.from_client = request.from_client;
+            response.to_chanel = request.to_chanel;
+            strcpy(response.from_client_name,request.from_client_name);
+
+            if(result==0){
+                response.body[0]='0';
+                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+                response.msgid = 4;
+                for(int i=0;i<MAX_USER;i++){
+                if(user[i].queue_id!=0)
+                    msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
+                }
+                send_last_ten_msg_from_channel(channels,request.to_chanel,request.from_client,current_server_id);
+            }else{
+                response.body[0]='-';
+                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+            }
+        break;
+        case 11:
+            add_msg_to_channel(channels,&request);
+            send_channel_msg_to_users(channels,request);
             break;
         default: // obsluga blednego pakietu
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nClient name:%s\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_client, request.from_client_name);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server,request.to_chanel);
+            write(log_descriptor, foo, strlen(foo));
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server,request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
             break;
