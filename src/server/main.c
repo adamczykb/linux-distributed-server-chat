@@ -102,9 +102,9 @@ int main(int argc, char *argv[])
             response.msgid = 2;
             response.from_server = current_server_id;
             response.body[0] = reg_outcome + 48;
+            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
             if (reg_outcome == 0)
             {
-                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
                 char from_client_string[20];
                 sprintf(from_client_string, "%d", request.from_client);
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
@@ -151,7 +151,7 @@ void heartbeat_starter()
     clear_mess(&response);
     srand(time(0));
     int shmget_log=rand()%1000000;
-    int shmget_user=rand()%99999;
+    int shmget_user=rand()%1000000;
     if (fork() == 0)
     {
         if ((userSID = shmget(shmget_user, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)

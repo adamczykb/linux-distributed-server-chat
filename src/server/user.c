@@ -23,7 +23,7 @@ void init_user_channel_struct(struct User *user, int n)
     }
 }
 
-void registration(int queue_id, char nickname[100], struct User *user, int *status)
+void registration(int queue_id, char *nickname, struct User *user, int *status)
 {
     int nr_of_clients;
     current_user_number(&nr_of_clients, user);
@@ -33,7 +33,7 @@ void registration(int queue_id, char nickname[100], struct User *user, int *stat
         return;
     }
     // Sprawdzenie czy nazwa już nie występuje
-    for (int i = 0; i < MAX_USER; i++)
+    for (int i = 0; i < nr_of_clients; i++)
     {
         if (!strcmp(user[i].nick, nickname))
         {
