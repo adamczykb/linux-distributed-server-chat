@@ -4,6 +4,7 @@
 #include "../../inc/server/setup.h"
 #include "../../inc/server/user.h"
 #include "../../inc/server/logger.h"
+#include "../../inc/server/channel.h"
 #include "../../inc/server/trans.h"
 
 WINDOW *info_window;
@@ -11,9 +12,9 @@ WINDOW *server_banner_window;
 WINDOW *log_window;
 WINDOW *background;
 
-
 struct Log *log;
-struct User (*user)[MAX_USER]; 
+struct Channel *channels;
+struct User *user;
 
 int current_server_id = 0;
 time_t current_time;
@@ -32,6 +33,9 @@ void setup(char *config_path)
     servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
+    channels = malloc(sizeof(struct Channel)*MAX_CHANNEL);
+
+    init_channel_struct(channels);
     if (current_server_id == -1)
     {
         perror(TR_QUEUE_ERROR);
@@ -42,10 +46,10 @@ void setup(char *config_path)
 void end_of_work()
 {
     msgctl(current_server_id, IPC_RMID, NULL);
-    shmctl(current_server_id + 1, IPC_RMID, NULL);
-    shmctl(current_server_id + 2, IPC_RMID, NULL);
     shmdt(user);
     shmdt(log);
+    shmctl(userSID, IPC_RMID, NULL);
+    shmctl(logSID, IPC_RMID, NULL);
     printf(TR_SERVER_STOPPED);
     endwin();
     exit(0);
@@ -80,12 +84,12 @@ int main(int argc, char *argv[])
     while (1)
     {
 
-        window_init(user, log, server_key,background, server_banner_window, info_window, log_window);
-        
+        window_init(user, log, server_key, background, server_banner_window, info_window, log_window);
+
         status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
         if (status == -1)
         {
-            usleep(100*1000);
+            usleep(100 * 1000);
             continue;
         }
         current_time = time(NULL);
@@ -93,7 +97,7 @@ int main(int argc, char *argv[])
         {
         case 0:
             break;
-        case 2: // wymiana informacji -> rejestracja użytkownika
+        case 2: // rejestracja użytkownika
             registration(request.from_client, request.from_client_name, user, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
             response.msgid = 2;
             response.from_server = current_server_id;
@@ -103,22 +107,41 @@ int main(int argc, char *argv[])
                 msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
                 char from_client_string[20];
                 sprintf(from_client_string, "%d", request.from_client);
-                add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name);
+                add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
             }
             break;
-        case 7: // wymiana informacji -> lista użytkowników
+        case 3: // nowy kanal
+            int channel_id = 0;
+            add_new_channel(channels, &channel_id, &request);
+            if (channel_id == -1)
+            {
+                add_to_log(log, time(NULL), "Blad podczas tworzenia kanalu", "localhost", request.body, 1);
+            }
+            else
+            {
+                add_to_log(log, time(NULL), "Pomyslnie utworzono kanal", "localhost", request.body, 0);
+            }
+            response.msgid = 3;
+            response.timestamp = time(NULL);
+            response.from_server = current_server_id;
+            strcpy(response.from_client_name,request.from_client_name);
+            response.to_chanel = channel_id;
+            strcpy(response.body, request.body);
+            for(int i=0;i<MAX_USER;i++)
+                msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
+            break;
+        case 7: // lista użytkowników
             response.msgid = 7;
             response.from_server = current_server_id;
             for (int i=0; i<MAX_USER; i++){
-                strcat(response.body, user[i]->nick);
+                strcat(response.body, user[i].nick);
                 strcat(response.body, "\n");
             }
             msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
             char from_client_string[20];
             sprintf(from_client_string, "%d", request.from_client);
-            add_to_log(log, time(NULL), TR_SERVER_INFO_CLIENT_LIST, from_client_string, request.from_client_name);
-            
-
+            add_to_log(log, time(NULL), TR_SERVER_INFO_CLIENT_LIST, from_client_string, request.from_client_name, 0);
+            break;
         default: // obsluga blednego pakietu
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nClient name:%s\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_client, request.from_client_name);
             write(log_descriptor, foo, strlen(foo));
@@ -138,15 +161,17 @@ void heartbeat_starter()
     struct Mess request, response;
     clear_mess(&request);
     clear_mess(&response);
-
+    srand(time(0));
+    int shmget_log=rand()%1000000;
+    int shmget_user=rand()%99999;
     if (fork() == 0)
     {
-        if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
+        if ((userSID = shmget(shmget_user, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
         {
             perror("shmget");
             exit(1);
         }
-        if ((logSID = shmget(current_server_id + 2, sizeof(struct Log) * MAX_LOG, IPC_CREAT | 0644)) == -1)
+        if ((logSID = shmget(shmget_log, sizeof(struct Log) * MAX_LOG, IPC_CREAT | 0644)) == -1)
         {
             perror("shmget");
             exit(1);
@@ -158,7 +183,7 @@ void heartbeat_starter()
 
         char server_id_string[255];
         sprintf(server_id_string, "%d", current_server_id);
-        add_to_log(log, time(NULL), TR_SERVER_STARTED, server_id_string, TR_READY);
+        add_to_log(log, time(NULL), TR_SERVER_STARTED, server_id_string, TR_READY, 0);
 
         int client_number, status;
         sleep(1);
@@ -170,33 +195,31 @@ void heartbeat_starter()
                 request.msgid = 20;
                 request.from_server = current_server_id;
                 request.body[0] = 'A';
-                msgsnd(user[i]->queue_id, &request, sizeof(request) - sizeof(long), 0);
+                msgsnd(user[i].queue_id, &request, sizeof(request) - sizeof(long), 0);
                 sleep(1);
                 status = msgrcv(current_server_id, &response, sizeof(response) - sizeof(long), 20, IPC_NOWAIT);
                 if (status == -1 || request.body[0] != response.body[0])
                 {
                     char from_client_string[20];
-                    sprintf(from_client_string, "%d", user[i]->queue_id);
-                    add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i]->nick);
-                    logout(user[i]->queue_id, user, &status);
+                    sprintf(from_client_string, "%d", user[i].queue_id);
+                    add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i].nick, 0);
+                    logout(user[i].queue_id, user, &status);
                 }
                 clear_mess(&request);
                 clear_mess(&response);
-
             }
             sleep(1);
-
         }
         exit(1);
     }
-    
-    if ((userSID = shmget(current_server_id + 1, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
+
+    if ((userSID = shmget(shmget_user, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
     {
         perror("shmget");
         exit(1);
     }
 
-    if ((logSID = shmget(current_server_id + 2, sizeof(struct Log) * 500, IPC_CREAT | 0644)) == -1)
+    if ((logSID = shmget(shmget_log, sizeof(struct Log) * 500, IPC_CREAT | 0644)) == -1)
     {
         perror("shmget");
         exit(1);

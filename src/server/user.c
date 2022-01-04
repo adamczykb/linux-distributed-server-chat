@@ -1,16 +1,29 @@
 #include "../../inc/server/user.h"
 
-void init_user_struct(struct User (*user)[MAX_USER])
+void init_user_struct(struct User *user)
 {
     for (int i = 0; i < MAX_USER; i++)
     {
-        user[i]->free = 1;
-        user[i]->queue_id = 0;
-        strcpy(user[i]->nick, "");
+        user[i].free = 1;
+        user[i].queue_id = 0;
+        strcpy(user[i].nick, "");
+    }
+}
+void init_user_channel_struct(struct User *user, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        user[i].free = 1;
+        user[i].queue_id = 0;
+        strcpy(user[i].nick, "");
+        for (int j = 0; j < 100; j++)
+        {
+            clear_mess(&user[i].messages[j]);
+        }
     }
 }
 
-void registration(int queue_id, char nickname[100], struct User (*user)[MAX_USER], int *status)
+void registration(int queue_id, char nickname[100], struct User *user, int *status)
 {
     int nr_of_clients;
     current_user_number(&nr_of_clients, user);
@@ -22,40 +35,40 @@ void registration(int queue_id, char nickname[100], struct User (*user)[MAX_USER
     // Sprawdzenie czy nazwa już nie występuje
     for (int i = 0; i < MAX_USER; i++)
     {
-        if (!strcmp(user[i]->nick, nickname))
+        if (!strcmp(user[i].nick, nickname))
         {
             *status = -1;
             return;
         }
     }
     // Dodanie użytkownika
-    strcpy(user[nr_of_clients]->nick, nickname);
-    user[nr_of_clients]->queue_id = queue_id;
-    user[nr_of_clients]->free = 0;
+    strcpy(user[nr_of_clients].nick, nickname);
+    user[nr_of_clients].queue_id = queue_id;
+    user[nr_of_clients].free = 0;
     *status = 0;
 }
 
-void current_user_number(int *number, struct User (*user)[MAX_USER])
+void current_user_number(int *number, struct User *user)
 {
     *number = 0;
     for (int i = 0; i < MAX_USER; i++)
     {
-        if (user[i]->free == 1)
+        if (user[i].free == 1)
             break;
         (*number)++;
     }
 }
-void logout(int queue_id, struct User (*user)[MAX_USER], int *status)
+void logout(int queue_id, struct User *user, int *status)
 {
     for (int i = 0; i < MAX_USER; i++)
     {
-        if (user[i]->queue_id==queue_id)
+        if (user[i].queue_id==queue_id)
         {
             for (int j = i; j < MAX_USER - 1; j++)
             {
-                strcpy(user[j]->nick, user[j + 1]->nick);
-                user[j]->queue_id = user[j + 1]->queue_id;
-                user[j]->free = user[j + 1]->free;
+                strcpy(user[j].nick, user[j + 1].nick);
+                user[j].queue_id = user[j + 1].queue_id;
+                user[j].free = user[j + 1].free;
             }
             break;
         }

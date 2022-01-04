@@ -125,14 +125,14 @@ void text_type(WINDOW *operation_window, char *text,char *alert)
 void client_list(WINDOW *client_list_window, struct User *users, int n, int cursor_index[2])
 {
     int i = 0;
-    mvwprintw(client_list_window, 2 + i, 2, "Wybierz uzytkownika i kliknij [ENTER]");
+    mvwprintw(client_list_window, 1, 3, "\\/ [ENTER] /\\");
     for (int i = 0; i < n; i++)
     {
         if (users[i].free==1)
             break;
         if (cursor_index[1] == 0 && cursor_index[0] == i)
             wattron(client_list_window, COLOR_PAIR(4));
-        mvwprintw(client_list_window, 3 + i, 3, users[i].nick);
+        mvwprintw(client_list_window, 3 + i, 4, users[i].nick);
         wattroff(client_list_window, COLOR_PAIR(4));
     }
 }

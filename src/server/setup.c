@@ -97,3 +97,7 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
         exit(-1);
     }
 }
+
+void new_channel(struct Mess *request,struct Channel *channels){
+    
+}

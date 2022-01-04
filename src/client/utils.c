@@ -25,10 +25,10 @@ int num_of_users(struct User *users, int n)
     return i;
 }
 
-int num_of_channels(struct Channel *channels, int n)
+int num_of_channels(struct Channel *channels)
 {
     int i = 0;
-    for (i = 0; i < n; i++)
+    for (i = 0; i < MAX_CHANNEL; i++)
     {
         if (channels[i].free)
             break;
@@ -36,12 +36,12 @@ int num_of_channels(struct Channel *channels, int n)
     return i;
 }
 
-void init_channel_struct(struct Channel *channel, int n)
+void init_channel_struct(struct Channel *channel)
 {
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < MAX_CHANNEL; i++)
     {
         channel[i].free = 1;
-        channel[i].queue_id = 0;
+        channel[i].id = 0;
         strcpy(channel[i].name, "");
         init_user_struct(channel->users, 10);
         for (int j = 0; j < 100; j++)
@@ -49,11 +49,6 @@ void init_channel_struct(struct Channel *channel, int n)
             clear_mess(&channel[i].messages[j]);
         }
     }
-    channel[0].free = 0;
-    channel[0].queue_id = 0;
-    strcpy(channel[0].name, "LOL");
-    strcpy(channel[0].users[0].nick, "Jan");
-    channel[0].users[0].free = 0;
 }
 
 int get_server_id(int server_nr, int *result){
@@ -63,4 +58,24 @@ int get_server_id(int server_nr, int *result){
         *result = -1;
         return;
     }
+}
+
+
+void new_channel(struct Channel *channels, struct Mess *mess)
+{
+    int num = num_of_channels(channels);
+    
+    channels[num].id=mess->to_chanel;
+    channels[num].free=0;
+    strcpy(channels[num].name,mess->body);
+    
+    for (int j = 0; j < 100; j++)
+    {
+        clear_mess(&channels[num].messages[j]);
+    }
+
+    init_user_struct(channels[num].users,10);
+    channels[num].users[0].free=0;
+    strcpy(channels[num].users[0].nick,mess->from_client_name);
+    channels[num].users[0].queue_id=mess->from_client;
 }
