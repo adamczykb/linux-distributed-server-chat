@@ -156,7 +156,8 @@ void channel_options(WINDOW *channel_list_window, struct Channel *channels, int 
                 mvwprintw(channel_list_window, 4 + i + j, 4, channels[i].users[j].nick);
             }
             mvwprintw(channel_list_window, 5 + i + j, 3, "[ENTER] Dolacz");
-            mvwprintw(channel_list_window, 6 + i + j, 3, "[e] Opusc kanal");
+            mvwprintw(channel_list_window, 6 + i + j, 3, "[l] 10 ostatnich wiadomosci");
+            mvwprintw(channel_list_window, 7 + i + j, 3, "[e] Opusc kanal");
             i += 4 + j;
             n += j + 4;
         }

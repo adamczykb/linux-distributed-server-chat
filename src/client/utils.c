@@ -55,3 +55,12 @@ void init_channel_struct(struct Channel *channel, int n)
     strcpy(channel[0].users[0].nick, "Jan");
     channel[0].users[0].free = 0;
 }
+
+int get_server_id(int server_nr, int *result){
+    int server_id = msgget(server_nr, 0644);
+    if (server_id == -1)
+    {
+        *result = -1;
+        return;
+    }
+}

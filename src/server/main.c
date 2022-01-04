@@ -106,6 +106,18 @@ int main(int argc, char *argv[])
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name);
             }
             break;
+        case 7: // wymiana informacji -> lista użytkowników
+            response.msgid = 7;
+            response.from_server = current_server_id;
+            for (int i=0; i<MAX_USER; i++){
+                strcat(response.body, user[i]->nick);
+                strcat(response.body, "\n");
+            }
+            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+            char from_client_string[20];
+            sprintf(from_client_string, "%d", request.from_client);
+            add_to_log(log, time(NULL), TR_SERVER_INFO_CLIENT_LIST, from_client_string, request.from_client_name);
+            
 
         default: // obsluga blednego pakietu
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nClient name:%s\n-----------", ctime(&current_time), request.msgid, request.body, request.timestamp, request.from_client, request.from_client_name);
