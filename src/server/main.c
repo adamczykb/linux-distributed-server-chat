@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
         {
         case 0:
             break;
-        case 2:                                                                              // wymiana informacji -> rejestracja użytkownika
+        case 2: // rejestracja użytkownika
             registration(request.from_client, request.from_client_name, user, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
             response.msgid = 2;
             response.from_server = current_server_id;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
             }
             break;
-        case 3: //nowy kanal
+        case 3: // nowy kanal
             int channel_id = 0;
             add_new_channel(channels, &channel_id, &request);
             if (channel_id == -1)
@@ -163,6 +163,18 @@ int main(int argc, char *argv[])
         case 11:
             add_msg_to_channel(channels,&request);
             send_channel_msg_to_users(channels,request);
+            break;
+        case 7: // lista użytkowników
+            response.msgid = 7;
+            response.from_server = current_server_id;
+            for (int i=0; i<MAX_USER; i++){
+                strcat(response.body, user[i].nick);
+                strcat(response.body, "\n");
+            }
+            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+            char from_client_string[20];
+            sprintf(from_client_string, "%d", request.from_client);
+            add_to_log(log, time(NULL), TR_SERVER_INFO_CLIENT_LIST, from_client_string, request.from_client_name, 0);
             break;
         default: // obsluga blednego pakietu
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server,request.to_chanel);

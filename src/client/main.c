@@ -20,6 +20,8 @@ struct User clients[50];
 struct Channel channels[50];
 struct Mess request, response;
 
+struct Mess request, response;
+
 int cursor_index[3];
 
 char alert[100] = "";
@@ -351,6 +353,16 @@ void main_screen()
         wattron(client_list_window, COLOR_PAIR(2));
     box(client_list_window, 0, 0);
     wattroff(client_list_window, COLOR_PAIR(2));
+
+    clear_mess(&request);
+    request.msgid = 7;
+    request.from_client = client_queue_id;
+    msgsnd(server_queue_id, &request, sizeof(request)-sizeof(long), 0);
+
+    clear_mess(&response);
+    msgrcv(client_queue_id, &response, sizeof(response)-sizeof(long), 7, 0);
+    printf(response.body);
+
     boxDescription(client_list_window, "Lista klientow");
     client_list(client_list_window, clients, 50, cursor_index);
     /*

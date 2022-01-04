@@ -1,14 +1,11 @@
 #include "../../inc/common.h"
 #include "../../inc/client/communication.h"
+#include "../../inc/client/utils.h"
 
 void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *result)
 {
-    int server_id = msgget(server_nr, 0644);
-    if (server_id == -1)
-    {
-        *result = -1;
-        return;
-    }
+    int server_id = get_server_id(server_nr, *result);
+    if (server_id == -1) return;
 
     struct Mess registration_msg;
     clear_mess(&registration_msg);
@@ -27,6 +24,7 @@ void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *
     else
         *result = -1;
 }
+
 
 void heartbeat(int client_queue_id,  char* nick, int server_queue_id){
     struct Mess response;
