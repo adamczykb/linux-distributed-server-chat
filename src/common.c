@@ -79,6 +79,29 @@ void add_user_to_channel(struct Channel *channels, struct Mess *mess,int *result
         }
     }
 }
+void remove_user_from_channel(struct Channel *channels, struct Mess *mess,int *result){
+    *result=-1;
+    for(int i =0;i<MAX_CHANNEL;i++){
+        if(channels[i].id==mess->to_chanel){
+            for(int j=0;j<10;j++){
+                if(channels[i].users[j].queue_id==mess->from_client){
+                    for(int k=j;k<9;k++){
+                        channels[i].users[j].free=channels[i].users[k].free;
+                        strcpy(channels[i].users[j].nick,channels[i].users[k].nick);
+                        channels[i].users[j].queue_id=channels[i].users[k].queue_id;
+                    }
+                    channels[i].users[j].free=1;
+                    strcpy(channels[i].users[j].nick,"");
+                    channels[i].users[j].queue_id=0;
+                    *result=0;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+}
+
 void add_msg_to_channel(struct Channel *channels, struct Mess *mess){
     int i;
     for(i=0;i<MAX_CHANNEL;i++){

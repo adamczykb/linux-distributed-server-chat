@@ -23,8 +23,9 @@ void init_user_channel_struct(struct User *user, int n)
     }
 }
 
-void registration(int queue_id, char *nickname, struct User *user, int *status)
+void registration(struct Mess request, int server_queue_id, struct User *user, int *status)
 {
+    struct Mess response;
     int nr_of_clients;
     current_user_number(&nr_of_clients, user);
     if (nr_of_clients > 4)
@@ -35,17 +36,22 @@ void registration(int queue_id, char *nickname, struct User *user, int *status)
     // Sprawdzenie czy nazwa już nie występuje
     for (int i = 0; i < nr_of_clients; i++)
     {
-        if (!strcmp(user[i].nick, nickname))
+        if (!strcmp(user[i].nick, request.from_client_name))
         {
             *status = -1;
             return;
         }
     }
     // Dodanie użytkownika
-    strcpy(user[nr_of_clients].nick, nickname);
-    user[nr_of_clients].queue_id = queue_id;
+    strcpy(user[nr_of_clients].nick, request.from_client_name);
+    user[nr_of_clients].queue_id = request.from_client;
     user[nr_of_clients].free = 0;
     *status = 0;
+
+    response.msgid = 2;
+    response.from_server = server_queue_id;
+    response.body[0] = *status + 48;
+    msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
 }
 
 void current_user_number(int *number, struct User *user)
@@ -62,7 +68,7 @@ void logout(int queue_id, struct User *user, int *status)
 {
     for (int i = 0; i < MAX_USER; i++)
     {
-        if (user[i].queue_id==queue_id)
+        if (user[i].queue_id == queue_id)
         {
             for (int j = i; j < MAX_USER - 1; j++)
             {

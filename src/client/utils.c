@@ -76,8 +76,8 @@ void new_channel(struct Channel *channels, struct Mess *mess)
     }
 
     init_user_struct(channels[num].users,10);
-    channels[num].users[0].free=0;
-    strcpy(channels[num].users[0].nick,mess->from_client_name);
-    channels[num].users[0].queue_id=mess->from_client;
+    // channels[num].users[0].free=0;
+    // strcpy(channels[num].users[0].nick,mess->from_client_name);
+    // channels[num].users[0].queue_id=mess->from_client;
 }
 

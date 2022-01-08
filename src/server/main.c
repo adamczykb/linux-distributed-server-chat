@@ -35,7 +35,7 @@ void setup(char *config_path)
     servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
-    channels = malloc(sizeof(struct Channel)*MAX_CHANNEL);
+    channels = malloc(sizeof(struct Channel) * MAX_CHANNEL);
 
     init_channel_struct(channels);
     if (current_server_id == -1)
@@ -100,86 +100,55 @@ int main(int argc, char *argv[])
         case 0:
             break;
         case 2: // rejestracja użytkownika
-            registration(request.from_client, request.from_client_name, user, &reg_outcome); //trzeba tutaj bledy wyeliminowac bo kompilator jakies krzaki puszcza, no chyba ze: https://preview.redd.it/u4dvwl78c5d61.jpg?auto=webp&s=f381ee6e715604cef143fe5c1c6629041b5f1c46
-            response.msgid = 2;
-            response.from_server = current_server_id;
-            response.body[0] = reg_outcome + 48;
-            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+            registration(request, current_server_id, user, &reg_outcome);
+
             if (reg_outcome == 0)
             {
                 char from_client_string[20];
                 sprintf(from_client_string, "%d", request.from_client);
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
             }
+
+            channel_info_on_user_login(channels, &request, current_server_id);
             break;
         case 3: // nowy kanal
-            int channel_id = 0;
-            add_new_channel(channels, &channel_id, &request);
-            if (channel_id == -1)
+            int channel_id, channel_index;
+            add_new_channel(channels, &channel_id, &channel_index, &request);
+            if (channel_id != -1)
             {
-                add_to_log(log, time(NULL), "Blad podczas tworzenia kanalu", "localhost", request.body, 1);
-            }
-            else
-            {
+                for (int i = 0; i < MAX_USER; i++)
+                {
+                    if (user[i].free == 0)
+                    {
+                        send_created_channel(user[i].queue_id, channels[channel_index], current_server_id);
+                        send_new_channel_member(user[i].queue_id, channel_id, request.from_client, request.from_client_name, current_server_id);
+                    }
+                }
+
+                send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id);
+
                 add_to_log(log, time(NULL), "Pomyslnie utworzono kanal", "localhost", request.body, 0);
             }
-            response.msgid = 3;
-            response.timestamp = time(NULL);
-            response.from_server = current_server_id;
-            strcpy(response.from_client_name,request.from_client_name);
-            response.to_chanel = channel_id;
-            strcpy(response.body, request.body);
-            for(int i=0;i<MAX_USER;i++){
-                if(user[i].queue_id!=0)
-                    msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
-            }
-            if(channel_id != -1){
-                send_last_ten_msg_from_channel(channels,channel_id,request.from_client,current_server_id);
-            }
+            else
+                add_to_log(log, time(NULL), "Blad podczas tworzenia kanalu", "localhost", request.body, 1);
             break;
         case 4:
-            add_user_to_channel(channels,&request,&result);
-            response.msgid = 6;
-            response.timestamp = time(NULL);
-            response.from_server = current_server_id;
-            response.from_client = request.from_client;
-            response.to_chanel = request.to_chanel;
-            strcpy(response.from_client_name,request.from_client_name);
+            add_user_to_channel(channels, &request, &result);
+            add_user_to_channel_server_response(channels, &request, user, current_server_id, result);
 
-            if(result==0){
-                response.body[0]='0';
-                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
-                response.msgid = 4;
-                for(int i=0;i<MAX_USER;i++){
-                if(user[i].queue_id!=0)
-                    msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
-                }
-                send_last_ten_msg_from_channel(channels,request.to_chanel,request.from_client,current_server_id);
-            }else{
-                response.body[0]='-';
-                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
-            }
-        break;
-        case 11:
-            add_msg_to_channel(channels,&request);
-            send_channel_msg_to_users(channels,request);
             break;
-        case 7: // lista użytkowników
-            response.msgid = 7;
-            response.from_server = current_server_id;
-            for (int i=0; i<MAX_USER; i++){
-                strcat(response.body, user[i].nick);
-                strcat(response.body, "\n");
-            }
-            msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
-            char from_client_string[20];
-            sprintf(from_client_string, "%d", request.from_client);
-            add_to_log(log, time(NULL), TR_SERVER_INFO_CLIENT_LIST, from_client_string, request.from_client_name, 0);
+        case 5:
+            remove_user_from_channel(channels, &request, &result);
+            remove_user_from_channel_server_response(channels, &request, user, current_server_id, result);
+            break;
+        case 11:
+            add_msg_to_channel(channels, &request);
+            send_channel_msg_to_users(channels, request);
             break;
         default: // obsluga blednego pakietu
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server,request.to_chanel);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server,request.to_chanel);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
             break;
@@ -198,8 +167,8 @@ void heartbeat_starter()
     clear_mess(&request);
     clear_mess(&response);
     srand(time(0));
-    int shmget_log=rand()%1000000;
-    int shmget_user=rand()%1000000;
+    int shmget_log = rand() % 1000000;
+    int shmget_user = rand() % 1000000;
     if (fork() == 0)
     {
         if ((userSID = shmget(shmget_user, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
@@ -238,7 +207,8 @@ void heartbeat_starter()
                 {
                     char from_client_string[20];
                     sprintf(from_client_string, "%d", user[i].queue_id);
-                    add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i].nick, 0);
+                    if (strlen(user[i].nick) > 0)
+                        add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i].nick, 0);
                     logout(user[i].queue_id, user, &status);
                 }
                 clear_mess(&request);

@@ -53,6 +53,7 @@ void read_config(int *servers_keys, char *path_to_config);
 void num_of_config_lines(int *nr_of_lines, char *path_to_config);
 void boxDescription(WINDOW *pwin, const char *title); /* pwin (WINDOW*) -> okno ncurses, title (const char *) -> treść, która ma zostać wyświetlona nad oknem */
 void add_user_to_channel(struct Channel *channels, struct Mess *mess, int *result);
+void remove_user_from_channel(struct Channel *channels, struct Mess *mess,int *result);
 void add_msg_to_channel(struct Channel *channels, struct Mess *mess);
 
 #endif

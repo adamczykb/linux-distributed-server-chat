@@ -1,7 +1,8 @@
 #include "../../inc/client/ui.h"
 
-void init_screen(){
-endwin();
+void init_screen()
+{
+    endwin();
     initscr();
     nodelay(stdscr, true);
     init_pair(1, COLOR_YELLOW, COLOR_BLACK);
@@ -9,7 +10,7 @@ endwin();
     init_pair(3, COLOR_BLACK, COLOR_RED);
     init_pair(4, COLOR_WHITE, COLOR_MAGENTA);
 }
-void nick_input_screen(WINDOW *single_window,char *nick)
+void nick_input_screen(WINDOW *single_window, char *nick)
 {
     char *enter = "< ENTER >";
     char *foo = "Klient komunikatora";
@@ -41,7 +42,7 @@ void nick_input_screen(WINDOW *single_window,char *nick)
     wrefresh(single_window);
     mvwprintw(single_window, 3, 2, nick);
 }
-void choose_server_screen(WINDOW *single_window,int nr_of_servers, char *komunikat,int *server_keys,int *choosed_server_key)
+void choose_server_screen(WINDOW *single_window, int nr_of_servers, char *komunikat, int *server_keys, int *choosed_server_key)
 {
     endwin();
     refresh();
@@ -110,7 +111,7 @@ void choose_server_screen(WINDOW *single_window,int nr_of_servers, char *komunik
     }
     *choosed_server_key = server_keys[highlight];
 }
-void text_type(WINDOW *operation_window, char *text,char *alert)
+void text_type(WINDOW *operation_window, char *text, char *alert)
 {
     int x, y;
     getmaxyx(operation_window, y, x);
@@ -128,7 +129,7 @@ void client_list(WINDOW *client_list_window, struct User *users, int n, int curs
     mvwprintw(client_list_window, 1, 3, "\\/ [ENTER] /\\");
     for (int i = 0; i < n; i++)
     {
-        if (users[i].free==1)
+        if (users[i].free == 1)
             break;
         if (cursor_index[1] == 0 && cursor_index[0] == i)
             wattron(client_list_window, COLOR_PAIR(4));
@@ -156,8 +157,7 @@ void channel_options(WINDOW *channel_list_window, struct Channel *channels, int 
                 mvwprintw(channel_list_window, 4 + i + j, 4, channels[i].users[j].nick);
             }
             mvwprintw(channel_list_window, 5 + i + j, 3, "[ENTER] Dolacz");
-            mvwprintw(channel_list_window, 6 + i + j, 3, "[l] 10 ostatnich wiadomosci");
-            mvwprintw(channel_list_window, 7 + i + j, 3, "[e] Opusc kanal");
+            mvwprintw(channel_list_window, 6 + i + j, 3, "[e] Opusc kanal");
             i += 4 + j;
             n += j + 4;
         }

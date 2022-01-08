@@ -142,12 +142,15 @@ int main(int argc, char *argv[])
         case 4:
             add_user_to_channel(channels, &response, &result);
             break;
+        case 5:
+            remove_user_from_channel(channels, &response, &result);
+            break;
         case 11:
             add_msg_to_channel(channels, &response);
             break;
         default: // obsluga blednego pakietu
             char foo[2048];
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nChannel id: %d-----------\n", ctime(&current_time), response.msgid, response.body, response.timestamp, response.from_server,response.to_chanel);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nChannel id: %d-----------\n", ctime(&current_time), response.msgid, response.body, response.timestamp, response.from_server, response.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
             break;
@@ -199,7 +202,7 @@ void main_screen()
                 strcpy(input_text, "");
                 break;
             case TYPING_TARGET_NEW_CHANNEL:
-                //tu bedzie lecial pakiet do serwera i czekal na odpowiedz i od razu otworzy okno wiadomosci
+                // tu bedzie lecial pakiet do serwera i czekal na odpowiedz i od razu otworzy okno wiadomosci
                 clear_mess(&request);
                 clear_mess(&response);
 
@@ -228,18 +231,19 @@ void main_screen()
                 sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
                 break;
             case TYPING_TARGET_NEW_MESSAGE:
-                if(strlen(input_text)>0){
-                clear_mess(&request);
-                clear_mess(&response);
-                request.msgid = 11;
-                request.from_client = client_queue_id;
-                request.timestamp = time(NULL);
-                strcpy(request.from_client_name, nick);
-                strcpy(request.body, input_text);
-                request.to_chanel=target_id;
-                strcpy(input_text, "");
-                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
-                strcpy(alert, "");
+                if (strlen(input_text) > 0)
+                {
+                    clear_mess(&request);
+                    clear_mess(&response);
+                    request.msgid = 11;
+                    request.from_client = client_queue_id;
+                    request.timestamp = time(NULL);
+                    strcpy(request.from_client_name, nick);
+                    strcpy(request.body, input_text);
+                    request.to_chanel = target_id;
+                    strcpy(input_text, "");
+                    msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+                    strcpy(alert, "");
                 }
                 break;
             default:
@@ -275,9 +279,9 @@ void main_screen()
                 request.timestamp = time(NULL);
                 strcpy(request.from_client_name, nick);
                 strcpy(request.body, "");
-                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0); //wysylanie prosby o zapisanie do kanalu
+                msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0); // wysylanie prosby o zapisanie do kanalu
 
-                msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 6, 0); //odpowiedz o akceptacji
+                msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 6, 0); // odpowiedz o akceptacji
                 if (response.body[0] != '0')
                 {
                     strcpy(alert, "Wystapil nieoczekiwany blad");
@@ -299,6 +303,29 @@ void main_screen()
             strcpy(alert, "Podaj nazwe tworzonego kanalu!");
         }
         break;
+    case 'e':
+        if (cursor_index[1] == 1  && cursor_index[0] < num_of_channels(channels) && channels[cursor_index[0]].usr_signed==1){
+            input_target = TYPING_TARGET_NO_DECLARED;
+            mess_type = MSG_TYPE_NO_DECLARED;
+            target_id = channels[cursor_index[0]].id;
+            channels[cursor_index[0]].usr_signed=0;
+            for(int i =0;i<100;i++){
+                strcpy(channels[cursor_index[0]].messages->body,"");
+                strcpy(channels[cursor_index[0]].messages->from_client_name,"");
+                channels[cursor_index[0]].messages->timestamp=NULL;
+                channels[cursor_index[0]].messages->from_client=0;
+            }
+            clear_mess(&request);
+            clear_mess(&response);
+            request.msgid = 5;
+            request.from_client = client_queue_id;
+            request.to_chanel = target_id;
+            request.timestamp = time(NULL);
+            strcpy(request.from_client_name, nick);
+            strcpy(request.body, "");
+            msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+        }
+    break;
     case 8:
     case 127:
     case KEY_BACKSPACE:
@@ -353,15 +380,6 @@ void main_screen()
         wattron(client_list_window, COLOR_PAIR(2));
     box(client_list_window, 0, 0);
     wattroff(client_list_window, COLOR_PAIR(2));
-
-    clear_mess(&request);
-    request.msgid = 7;
-    request.from_client = client_queue_id;
-    msgsnd(server_queue_id, &request, sizeof(request)-sizeof(long), 0);
-
-    clear_mess(&response);
-    msgrcv(client_queue_id, &response, sizeof(response)-sizeof(long), 7, 0);
-    printf(response.body);
 
     boxDescription(client_list_window, "Lista klientow");
     client_list(client_list_window, clients, 50, cursor_index);
