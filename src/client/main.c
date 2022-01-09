@@ -14,7 +14,7 @@ char input_text[MAX_MSG_LEN] = "";
 enum typing_target input_target;
 enum message_type mess_type;
 int target_id = 0;    // kod klienta docelowego lub kanalu
-int target_index = 0; // indeks dla tablicy struktu
+int target_index_channel = 0; // indeks dla tablicy struktu
 
 struct User clients[50];
 struct Channel channels[50];
@@ -27,7 +27,7 @@ int cursor_index[3];
 char alert[100] = "";
 int status;
 int result;
-
+int global_declared=0;
 time_t current_time;
 
 int nr_of_serwers;
@@ -117,7 +117,9 @@ int main(int argc, char *argv[])
     {
         heartbeat(client_queue_id, nick, server_queue_id);
     }
+
     strcpy(alert, "");
+
     init_screen();
     while (1)
     {
@@ -138,6 +140,13 @@ int main(int argc, char *argv[])
             break;
         case 3:
             new_channel(channels, &response);
+                if(global_declared==0){
+                    input_target = TYPING_TARGET_NEW_MESSAGE;
+                    mess_type = MSG_TYPE_CHANNEL;
+                    target_id = channels[0].id;
+                    target_index_channel = 0;
+                    sprintf(op_window_title, "Rozmowa na kanale %s", channels[0].name);
+                }
             break;
         case 4:
             add_user_to_channel(channels, &response, &result);
@@ -147,6 +156,9 @@ int main(int argc, char *argv[])
             break;
         case 11:
             add_msg_to_channel(channels, &response);
+            break;
+        case 12:
+            remove_from_channel_list_id(channels, response.to_chanel);
             break;
         default: // obsluga blednego pakietu
             char foo[2048];
@@ -172,13 +184,13 @@ void main_screen()
     case KEY_UP:
         cursor_index[0]--;
         if (cursor_index[1] == 0 && cursor_index[0] < 0)
-            cursor_index[0] = num_of_users(clients, 50) - 1;
+            cursor_index[0] = num_of_users(channels[target_index_channel].users, 10) - 1;
         if (cursor_index[1] == 1 && cursor_index[0] < 0)
             cursor_index[0] = num_of_channels(channels);
         break;
     case KEY_DOWN:
         cursor_index[0]++;
-        if (cursor_index[1] == 0 && cursor_index[0] >= num_of_users(clients, 50))
+        if (cursor_index[1] == 0 && cursor_index[0] > num_of_users(channels[target_index_channel].users, 10)-1)
             cursor_index[0] = 0;
         if (cursor_index[1] == 1 && cursor_index[0] > num_of_channels(channels))
             cursor_index[0] = 0;
@@ -224,7 +236,7 @@ void main_screen()
                 channels[num_of_channels(channels) - 1].usr_signed = 1; // dany klient jest tu zarejestrowany
 
                 target_id = channels[num_of_channels(channels) - 1].id;
-                target_index = num_of_channels(channels) - 1;
+                target_index_channel = num_of_channels(channels) - 1;
                 cursor_index[1] = 2;
                 cursor_index[0] = num_of_channels(channels) - 1;
 
@@ -255,10 +267,7 @@ void main_screen()
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_MESSAGE;
             mess_type = MSG_TYPE_DIRECT;
-            target_id = clients[cursor_index[0]].queue_id;
-            target_index = cursor_index[0];
             cursor_index[1] = 2;
-            sprintf(op_window_title, "Rozmowa z %s", clients[cursor_index[0]].nick);
         }
         if (cursor_index[1] == 1 && cursor_index[0] < num_of_channels(channels))
         {
@@ -266,7 +275,7 @@ void main_screen()
             input_target = TYPING_TARGET_NEW_MESSAGE;
             mess_type = MSG_TYPE_CHANNEL;
             target_id = channels[cursor_index[0]].id;
-            target_index = cursor_index[0];
+            target_index_channel = cursor_index[0];
             cursor_index[1] = 2;
             if (channels[cursor_index[0]].usr_signed == 0)
             {
@@ -289,9 +298,10 @@ void main_screen()
                 else
                 {
                     channels[cursor_index[0]].usr_signed = 1;
-                    sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
                 }
             }
+            sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
+
         }
         if (cursor_index[1] == 1 && cursor_index[0] == num_of_channels(channels))
         {
@@ -380,9 +390,10 @@ void main_screen()
         wattron(client_list_window, COLOR_PAIR(2));
     box(client_list_window, 0, 0);
     wattroff(client_list_window, COLOR_PAIR(2));
-
-    boxDescription(client_list_window, "Lista klientow");
-    client_list(client_list_window, clients, 50, cursor_index);
+    char box_desc[255];
+    sprintf(box_desc,"Lista klientow %s",channels[target_index_channel].name);
+    boxDescription(client_list_window, box_desc);
+    client_list(client_list_window, channels, target_index_channel,client_queue_id, cursor_index);
     /*
         Deklaracja:
         Lista dostepnych kanalow
@@ -410,11 +421,11 @@ void main_screen()
     {
         if (mess_type == MSG_TYPE_DIRECT)
         {
-            load_messages_to_window(operation_window, clients[target_index].messages);
+            load_messages_to_window(operation_window, clients[target_index_channel].messages);
         }
         if (mess_type == MSG_TYPE_CHANNEL)
         {
-            load_messages_to_window(operation_window, channels[target_index].messages);
+            load_messages_to_window(operation_window, channels[target_index_channel].messages);
         }
     }
     wrefresh(background);

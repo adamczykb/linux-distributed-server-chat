@@ -123,18 +123,27 @@ void text_type(WINDOW *operation_window, char *text, char *alert)
     wattroff(operation_window, COLOR_PAIR(3));
 }
 
-void client_list(WINDOW *client_list_window, struct User *users, int n, int cursor_index[2])
+void client_list(WINDOW *client_list_window, struct Channel *channels, int n,int current_user_id, int cursor_index[2])
 {
-    int i = 0;
-    mvwprintw(client_list_window, 1, 3, "\\/ [ENTER] /\\");
-    for (int i = 0; i < n; i++)
+    // mvwprintw(client_list_window, 1, 3, "\\/ [ENTER] /\\");
+    for (int i = 0; i < 10; i++)
     {
-        if (users[i].free == 1)
+        if (channels[n].users[i].free == 1)
             break;
         if (cursor_index[1] == 0 && cursor_index[0] == i)
             wattron(client_list_window, COLOR_PAIR(4));
-        mvwprintw(client_list_window, 3 + i, 4, users[i].nick);
+
+        if (channels[n].users[i].queue_id == current_user_id)
+            wattron(client_list_window, COLOR_PAIR(2));
+        
+        if (cursor_index[1] == 0 && cursor_index[0] == i && channels[n].users[i].queue_id == current_user_id)
+            wattron(client_list_window, COLOR_PAIR(3));
+        
+        mvwprintw(client_list_window, 1 +i, 3, channels[n].users[i].nick);
         wattroff(client_list_window, COLOR_PAIR(4));
+        wattroff(client_list_window, COLOR_PAIR(2));
+        wattroff(client_list_window, COLOR_PAIR(3));
+
     }
 }
 
@@ -143,26 +152,28 @@ void channel_options(WINDOW *channel_list_window, struct Channel *channels, int 
     int i = 0, pos = 0;
     for (i = 0; i < n; i++)
     {
-        if (channels[i].free)
+        if (channels[pos].free)
             break;
         if (cursor_index[1] == 1 && cursor_index[0] == pos)
         {
             wattron(channel_list_window, COLOR_PAIR(4));
-            mvwprintw(channel_list_window, 2 + i, 2, channels[i].name);
+            mvwprintw(channel_list_window, 2 + i, 2, channels[pos].name);
             wattroff(channel_list_window, COLOR_PAIR(4));
-            mvwprintw(channel_list_window, 3 + i, 3, "Polaczeni uzytkownicy:");
-            int j = 0;
-            for (j = 0; j < num_of_users(channels[i].users, 10); j++)
-            {
-                mvwprintw(channel_list_window, 4 + i + j, 4, channels[i].users[j].nick);
+            mvwprintw(channel_list_window, 3 + i, 3, "[ENTER] Wejdz");
+            if(i==0){
+                i += 1;
+                n += 1;
+            }else{
+                if(channels[pos].usr_signed==1){
+                    mvwprintw(channel_list_window, 4 + i, 3, "[e] Opusc");
+                    i += 2;
+                    n += 2;
+                }
             }
-            mvwprintw(channel_list_window, 5 + i + j, 3, "[ENTER] Dolacz");
-            mvwprintw(channel_list_window, 6 + i + j, 3, "[e] Opusc kanal");
-            i += 4 + j;
-            n += j + 4;
+            
         }
         else
-            mvwprintw(channel_list_window, 2 + i, 2, channels[i].name);
+            mvwprintw(channel_list_window, 2 + i, 2, channels[pos].name);
         pos++;
     }
     (++i);

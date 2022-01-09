@@ -22,7 +22,7 @@ int current_server_id = 0;
 time_t current_time;
 int server_key = 0;
 int *servers_ids;
-int userSID, logSID;
+int userSID, logSID, channelSID;
 int log_descriptor;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
 
@@ -30,20 +30,20 @@ void heartbeat_starter();
 
 void setup(char *config_path)
 {
-    int nr_of_lines = 1;
+    int nr_of_lines = 1, channel_id, channel_index;
     num_of_config_lines(&nr_of_lines, config_path);
     servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
-    channels = malloc(sizeof(struct Channel) * MAX_CHANNEL);
+    // channels = malloc(sizeof(struct Channel) * MAX_CHANNEL);
 
-    init_channel_struct(channels);
     if (current_server_id == -1)
     {
         perror(TR_QUEUE_ERROR);
         exit(1);
     }
     heartbeat_starter();
+
 }
 void end_of_work()
 {
@@ -94,6 +94,17 @@ int main(int argc, char *argv[])
             usleep(100 * 1000);
             continue;
         }
+        int usr_exist = -1;
+        for (int i = 0; i < MAX_USER; i++)
+        {
+            if (user[i].queue_id == request.from_client)
+            {
+                usr_exist = 0;
+                break;
+            }
+        }
+        if (usr_exist == -1 && request.msgid != 2)
+            continue;
         current_time = time(NULL);
         switch (request.msgid)
         {
@@ -107,9 +118,23 @@ int main(int argc, char *argv[])
                 char from_client_string[20];
                 sprintf(from_client_string, "%d", request.from_client);
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
+
+                request.to_chanel = 1;
+                add_user_to_channel(channels, &request, &result);
+                channel_info_on_user_login(channels, &request, current_server_id);
+                send_last_ten_msg_from_channel(channels, 1, request.from_client, current_server_id);
+
+                response.msgid = 4;
+                response.to_chanel = 1;
+                response.from_client = request.from_client;
+                strcpy(response.from_client_name, request.from_client_name);
+                for (int i = 0; i < MAX_USER; i++)
+                {
+                    if (user[i].queue_id != 0 && user[i].queue_id != request.from_client)
+                        msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
+                }
             }
 
-            channel_info_on_user_login(channels, &request, current_server_id);
             break;
         case 3: // nowy kanal
             int channel_id, channel_index;
@@ -140,6 +165,32 @@ int main(int argc, char *argv[])
         case 5:
             remove_user_from_channel(channels, &request, &result);
             remove_user_from_channel_server_response(channels, &request, user, current_server_id, result);
+            
+            int user_num, srv_index = -1;
+            for (int i = 1; i < MAX_CHANNEL; i++)
+            {
+                 if(channels[i].free==1)
+                break;
+                if (channels[i].id == request.to_chanel)
+                {
+                    srv_index = i;
+                    break;
+                }
+               
+            }
+            if (srv_index > 0)
+            {
+                current_user_number(&user_num, channels[srv_index].users);
+                if (user_num == 0)
+                {
+                    for (int i = 0; i < MAX_USER; i++)
+                    {
+                        if (user[i].free == 0)
+                            send_removed_channel(user[i].queue_id, request.to_chanel, current_server_id);
+                    }
+                    remove_from_channel_list_id(channels, channels[srv_index].id);
+                }
+            }
             break;
         case 11:
             add_msg_to_channel(channels, &request);
@@ -169,6 +220,8 @@ void heartbeat_starter()
     srand(time(0));
     int shmget_log = rand() % 1000000;
     int shmget_user = rand() % 1000000;
+    int shmget_channel = rand() % 1000000;
+
     if (fork() == 0)
     {
         if ((userSID = shmget(shmget_user, sizeof(struct User) * MAX_USER, IPC_CREAT | 0644)) == -1)
@@ -181,10 +234,23 @@ void heartbeat_starter()
             perror("shmget");
             exit(1);
         }
+        if ((channelSID = shmget(shmget_channel, sizeof(struct Channel) * MAX_CHANNEL, IPC_CREAT | 0644)) == -1)
+        {
+            perror("shmget");
+            exit(1);
+        }
         user = (struct User *)shmat(userSID, 0, 0);
         log = (struct Log *)shmat(logSID, 0, 0);
+        channels = (struct Channel *)shmat(channelSID, 0, 0);
 
         init_log(log);
+        init_channel_struct(channels);
+
+        struct Mess request;
+        strcpy(request.body, "Globalny");
+        request.from_client = 0;
+        int  channel_id, channel_index;
+        add_new_channel(channels, &channel_id, &channel_index, &request);
 
         char server_id_string[255];
         sprintf(server_id_string, "%d", current_server_id);
@@ -209,6 +275,27 @@ void heartbeat_starter()
                     sprintf(from_client_string, "%d", user[i].queue_id);
                     if (strlen(user[i].nick) > 0)
                         add_to_log(log, time(NULL), TR_USER_LEFT, from_client_string, user[i].nick, 0);
+
+                    clear_mess(&request);
+                    clear_mess(&response);
+                    int j = 0;
+                    for (j = 0; j < MAX_CHANNEL; j++)
+                    {
+                        if (channels[j].free == 1)
+                            break;
+                        request.from_client = user[i].queue_id;
+                        request.to_chanel = channels[j].id;
+                        remove_user_from_channel(channels, &request, &result);
+                        remove_user_from_channel_server_response(channels, &request, user, current_server_id, result);
+                        int user_num;
+                        current_user_number(&user_num, channels[j].users);
+                        if (user_num < 1 && j!=0)
+                        {
+                            send_removed_channel(user[i].queue_id, request.to_chanel, current_server_id);
+                            remove_from_channel_list_id(channels, channels[j].id);
+                            j--;
+                        }
+                    }
                     logout(user[i].queue_id, user, &status);
                 }
                 clear_mess(&request);
@@ -230,9 +317,14 @@ void heartbeat_starter()
         perror("shmget");
         exit(1);
     }
-
+    if ((channelSID = shmget(shmget_channel, sizeof(struct Channel) * MAX_CHANNEL, IPC_CREAT | 0644)) == -1)
+    {
+        perror("shmget");
+        exit(1);
+    }
     user = (struct User *)shmat(userSID, 0, 0);
     log = shmat(logSID, 0, 0);
+    channels = (struct Channel *)shmat(channelSID, 0, 0);
 
     init_user_struct(user);
 }

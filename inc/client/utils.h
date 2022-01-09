@@ -23,4 +23,5 @@ int num_of_users(struct User *users, int n);
 int num_of_channels(struct Channel *channels);
 void init_channel_struct(struct Channel *channel);
 void new_channel(struct Channel *channels, struct Mess *mess);
+void remove_from_channel_list_id(struct Channel *channels, int id);
 #endif

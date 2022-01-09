@@ -67,7 +67,11 @@ void new_channel(struct Channel *channels, struct Mess *mess)
     
     channels[num].id=mess->to_chanel;
     channels[num].free=0;
+    if(channels[num].id==1){
+         channels[num].usr_signed=1;
+    }else{
     channels[num].usr_signed=0;
+    }
     strcpy(channels[num].name,mess->body);
     
     for (int j = 0; j < 100; j++)
@@ -81,3 +85,21 @@ void new_channel(struct Channel *channels, struct Mess *mess)
     // channels[num].users[0].queue_id=mess->from_client;
 }
 
+void remove_from_channel_list_id(struct Channel *channels, int id)
+{
+    for (int i = 0; i < MAX_CHANNEL; i++)
+    {
+        if (id == channels[i].id)
+        {
+            for (int j = i; j < MAX_CHANNEL - 1; j++)
+            {
+                strcpy(channels[j].name, channels[j + 1].name);
+                channels[j].id = channels[j + 1].id;
+                channels[j].free = channels[j + 1].free;
+                memcpy(channels[j].messages, channels[j + 1].messages, sizeof(char) * 100 * 100);
+            }
+            break;
+        }
+    }
+    // Usunięcie kanalu i przesunięcie pozostałych na liscie
+}

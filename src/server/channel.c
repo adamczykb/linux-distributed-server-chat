@@ -14,9 +14,11 @@ void add_new_channel(struct Channel *channels, int *id, int *channel_index, stru
     channels[num].free = 0;
     strcpy(channels[num].name, mess->body);
     init_user_channel_struct(channels[num].users, 10);
-    channels[num].users[0].free = 0;
-    strcpy(channels[num].users[0].nick, mess->from_client_name);
-    channels[num].users[0].queue_id = mess->from_client;
+    if(mess->from_client!=0){
+        channels[num].users[0].free = 0;
+        strcpy(channels[num].users[0].nick, mess->from_client_name);
+        channels[num].users[0].queue_id = mess->from_client;
+    }
     for (int j = 0; j < 100; j++)
     {
         clear_mess(&channels[num].messages[j]);
@@ -175,6 +177,14 @@ void send_new_channel_member(int to, int channel_id, int creator_id,char *creato
     response.to_chanel = channel_id;
     response.from_client = creator_id;
     strcpy(response.from_client_name, creator_nick);
+    msgsnd(to, &response, sizeof(response) - sizeof(long), 0);
+}
+
+void send_removed_channel(int to, int channel_id, int from_server)
+{
+    struct Mess response;
+    response.msgid = 12;
+    response.to_chanel = channel_id;
     msgsnd(to, &response, sizeof(response) - sizeof(long), 0);
 }
 

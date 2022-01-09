@@ -86,13 +86,10 @@ void remove_user_from_channel(struct Channel *channels, struct Mess *mess,int *r
             for(int j=0;j<10;j++){
                 if(channels[i].users[j].queue_id==mess->from_client){
                     for(int k=j;k<9;k++){
-                        channels[i].users[j].free=channels[i].users[k].free;
-                        strcpy(channels[i].users[j].nick,channels[i].users[k].nick);
-                        channels[i].users[j].queue_id=channels[i].users[k].queue_id;
+                        channels[i].users[k].free=channels[i].users[k+1].free;
+                        strcpy(channels[i].users[k].nick,channels[i].users[k+1].nick);
+                        channels[i].users[k].queue_id=channels[i].users[k+1].queue_id;
                     }
-                    channels[i].users[j].free=1;
-                    strcpy(channels[i].users[j].nick,"");
-                    channels[i].users[j].queue_id=0;
                     *result=0;
                     break;
                 }

@@ -9,4 +9,6 @@ void nick_input_screen(WINDOW *single_window,char *nick);
 void choose_server_screen(WINDOW *single_window,int nr_of_servers, char *komunikat,int *server_keys,int *choosed_server_key);
 void text_type(WINDOW *operation_window, char *text,char *alert);
 void channel_options(WINDOW *channel_list_window, struct Channel *channels, int n, int cursor_index[2]);
+void client_list(WINDOW *client_list_window, struct Channel *channels, int n,int current_user_id, int cursor_index[2]);
+
 #endif

@@ -27,11 +27,11 @@ void registration(struct Mess request, int server_queue_id, struct User *user, i
 {
     struct Mess response;
     int nr_of_clients;
+    *status = 0;
     current_user_number(&nr_of_clients, user);
     if (nr_of_clients > 4)
     {
         *status = -1;
-        return;
     }
     // Sprawdzenie czy nazwa już nie występuje
     for (int i = 0; i < nr_of_clients; i++)
@@ -39,14 +39,12 @@ void registration(struct Mess request, int server_queue_id, struct User *user, i
         if (!strcmp(user[i].nick, request.from_client_name))
         {
             *status = -1;
-            return;
         }
     }
     // Dodanie użytkownika
     strcpy(user[nr_of_clients].nick, request.from_client_name);
     user[nr_of_clients].queue_id = request.from_client;
     user[nr_of_clients].free = 0;
-    *status = 0;
 
     response.msgid = 2;
     response.from_server = server_queue_id;
