@@ -25,6 +25,7 @@ struct Mess
     int from_client;
     char from_client_name[100];
     int to_chanel;
+    int to_user;
     char to_client_name[100];
     time_t timestamp;
     char body[1024];

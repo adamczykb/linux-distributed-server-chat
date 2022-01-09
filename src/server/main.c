@@ -52,6 +52,7 @@ void end_of_work()
     shmdt(log);
     shmctl(userSID, IPC_RMID, NULL);
     shmctl(logSID, IPC_RMID, NULL);
+    shmctl(channelSID, IPC_RMID, NULL);
     printf(TR_SERVER_STOPPED);
     endwin();
     exit(0);
@@ -196,6 +197,23 @@ int main(int argc, char *argv[])
             add_msg_to_channel(channels, &request);
             send_channel_msg_to_users(channels, request);
             break;
+        case 13: //wiadomosc prywatna
+            int sended=-1;
+            request.from_server=current_server_id;
+            msgsnd(request.from_client, &request, sizeof(request) - sizeof(long), 0);
+            for(int i =0;i<MAX_USER;i++){
+                if(user[i].queue_id==request.to_user){ //po to zeby mozna bylo wysylac tylko wiadomosci do userow ktorzy sa do tego serwera zalogowani
+                    request.to_user=request.from_client;
+                    msgsnd(user[i].queue_id, &request, sizeof(request) - sizeof(long), 0);
+                    sended=0;
+                    break;
+                }
+            }
+
+            // if(sended!=0){
+
+            // }
+        break;
         default: // obsluga blednego pakietu
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
@@ -291,6 +309,7 @@ void heartbeat_starter()
                         current_user_number(&user_num, channels[j].users);
                         if (user_num < 1 && j!=0)
                         {
+                            add_to_log(log, time(NULL), TR_SERVER_CHANNEL_DELETED, from_client_string, channels[j].name, 0);
                             send_removed_channel(user[i].queue_id, request.to_chanel, current_server_id);
                             remove_from_channel_list_id(channels, channels[j].id);
                             j--;

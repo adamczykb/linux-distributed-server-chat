@@ -13,10 +13,10 @@ char input_text[MAX_MSG_LEN] = "";
 
 enum typing_target input_target;
 enum message_type mess_type;
-int target_id = 0;    // kod klienta docelowego lub kanalu
-int target_index_channel = 0; // indeks dla tablicy struktu
+int target_channel_id= 0, target_user_id= 0;    // kod klienta docelowego lub kanalu
+int target_index_channel= 0,target_index_user = 0; // indeks dla tablicy struktu
 
-struct User clients[50];
+// struct User clients[50];
 struct Channel channels[50];
 struct Mess request, response;
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     client_queue_id = msgget(IPC_PRIVATE, 0644 | IPC_CREAT);
 
     get_server_keys("config.in");
-    init_user_struct(clients, 50);
+    // init_user_struct(clients, 50);
     init_channel_struct(channels);
 
     while (strlen(nick) == 0)
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
                 if(global_declared==0){
                     input_target = TYPING_TARGET_NEW_MESSAGE;
                     mess_type = MSG_TYPE_CHANNEL;
-                    target_id = channels[0].id;
+                    target_channel_id = channels[0].id;
                     target_index_channel = 0;
                     sprintf(op_window_title, "Rozmowa na kanale %s", channels[0].name);
                 }
@@ -159,6 +159,9 @@ int main(int argc, char *argv[])
             break;
         case 12:
             remove_from_channel_list_id(channels, response.to_chanel);
+            break;
+        case 13: //dodaj wiadomosc prywatna
+            add_dm_message(channels,&response);
             break;
         default: // obsluga blednego pakietu
             char foo[2048];
@@ -235,7 +238,7 @@ void main_screen()
 
                 channels[num_of_channels(channels) - 1].usr_signed = 1; // dany klient jest tu zarejestrowany
 
-                target_id = channels[num_of_channels(channels) - 1].id;
+                target_channel_id = channels[num_of_channels(channels) - 1].id;
                 target_index_channel = num_of_channels(channels) - 1;
                 cursor_index[1] = 2;
                 cursor_index[0] = num_of_channels(channels) - 1;
@@ -247,34 +250,60 @@ void main_screen()
                 {
                     clear_mess(&request);
                     clear_mess(&response);
-                    request.msgid = 11;
-                    request.from_client = client_queue_id;
-                    request.timestamp = time(NULL);
-                    strcpy(request.from_client_name, nick);
-                    strcpy(request.body, input_text);
-                    request.to_chanel = target_id;
-                    strcpy(input_text, "");
-                    msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
-                    strcpy(alert, "");
+
+                    if(mess_type == MSG_TYPE_CHANNEL){
+                        
+                        request.msgid = 11;
+                        request.from_client = client_queue_id;
+                        request.timestamp = time(NULL);
+                        strcpy(request.from_client_name, nick);
+                        strcpy(request.body, input_text);
+                        request.to_chanel = target_channel_id;
+                        strcpy(input_text, "");
+                        msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+                        strcpy(alert, "");
+                    }
+
+                    if(mess_type == MSG_TYPE_DIRECT){
+                        
+                        request.msgid = 13;
+                        request.from_client = client_queue_id;
+                        request.timestamp = time(NULL);
+                        strcpy(request.from_client_name, nick);
+                        strcpy(request.body, input_text);
+                        request.to_chanel = target_channel_id;
+                        request.to_user = target_user_id;
+                        strcpy(input_text, "");
+                        msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+                        strcpy(alert, "");
+                    }
+
                 }
                 break;
             default:
                 break;
             }
         }
-        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(clients, 50))
+        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(channels->users, 10))
         {
             strcpy(input_text, "");
+            if(channels[target_index_channel].users[cursor_index[0]].queue_id!=client_queue_id){
             input_target = TYPING_TARGET_NEW_MESSAGE;
             mess_type = MSG_TYPE_DIRECT;
             cursor_index[1] = 2;
+            target_index_user=cursor_index[0];
+            target_user_id = channels[target_index_channel].users[cursor_index[0]].queue_id;
+            sprintf(op_window_title, "Rozmowa prywatna z %s na kanale %s",channels[target_index_channel].users[target_index_user].nick, channels[target_index_channel].name);
+            }else{
+                sprintf(alert,"Nie mozna wyslac wiadomosci do samego siebie");
+            }
         }
         if (cursor_index[1] == 1 && cursor_index[0] < num_of_channels(channels))
         {
             strcpy(input_text, "");
             input_target = TYPING_TARGET_NEW_MESSAGE;
             mess_type = MSG_TYPE_CHANNEL;
-            target_id = channels[cursor_index[0]].id;
+            target_channel_id = channels[cursor_index[0]].id;
             target_index_channel = cursor_index[0];
             cursor_index[1] = 2;
             if (channels[cursor_index[0]].usr_signed == 0)
@@ -317,7 +346,7 @@ void main_screen()
         if (cursor_index[1] == 1  && cursor_index[0] < num_of_channels(channels) && channels[cursor_index[0]].usr_signed==1){
             input_target = TYPING_TARGET_NO_DECLARED;
             mess_type = MSG_TYPE_NO_DECLARED;
-            target_id = channels[cursor_index[0]].id;
+            target_channel_id = channels[cursor_index[0]].id;
             channels[cursor_index[0]].usr_signed=0;
             for(int i =0;i<100;i++){
                 strcpy(channels[cursor_index[0]].messages->body,"");
@@ -329,11 +358,17 @@ void main_screen()
             clear_mess(&response);
             request.msgid = 5;
             request.from_client = client_queue_id;
-            request.to_chanel = target_id;
+            request.to_chanel = target_channel_id;
             request.timestamp = time(NULL);
             strcpy(request.from_client_name, nick);
             strcpy(request.body, "");
             msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
+
+            input_target = TYPING_TARGET_NEW_MESSAGE;
+            mess_type = MSG_TYPE_CHANNEL;
+            target_channel_id = channels[0].id;
+            target_index_channel = 0;
+            sprintf(op_window_title, "Rozmowa na kanale %s", channels[0].name);
         }
     break;
     case 8:
@@ -421,7 +456,7 @@ void main_screen()
     {
         if (mess_type == MSG_TYPE_DIRECT)
         {
-            load_messages_to_window(operation_window, clients[target_index_channel].messages);
+            load_messages_to_window(operation_window, channels[target_index_channel].users[target_index_user].messages);
         }
         if (mess_type == MSG_TYPE_CHANNEL)
         {

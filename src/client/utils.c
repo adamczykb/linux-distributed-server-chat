@@ -51,7 +51,8 @@ void init_channel_struct(struct Channel *channel)
     }
 }
 
-int get_server_id(int server_nr, int *result){
+int get_server_id(int server_nr, int *result)
+{
     int server_id = msgget(server_nr, 0644);
     if (server_id == -1)
     {
@@ -60,26 +61,28 @@ int get_server_id(int server_nr, int *result){
     }
 }
 
-
 void new_channel(struct Channel *channels, struct Mess *mess)
 {
     int num = num_of_channels(channels);
-    
-    channels[num].id=mess->to_chanel;
-    channels[num].free=0;
-    if(channels[num].id==1){
-         channels[num].usr_signed=1;
-    }else{
-    channels[num].usr_signed=0;
+
+    channels[num].id = mess->to_chanel;
+    channels[num].free = 0;
+    if (channels[num].id == 1)
+    {
+        channels[num].usr_signed = 1;
     }
-    strcpy(channels[num].name,mess->body);
-    
+    else
+    {
+        channels[num].usr_signed = 0;
+    }
+    strcpy(channels[num].name, mess->body);
+
     for (int j = 0; j < 100; j++)
     {
         clear_mess(&channels[num].messages[j]);
     }
 
-    init_user_struct(channels[num].users,10);
+    init_user_struct(channels[num].users, 10);
     // channels[num].users[0].free=0;
     // strcpy(channels[num].users[0].nick,mess->from_client_name);
     // channels[num].users[0].queue_id=mess->from_client;
@@ -102,4 +105,31 @@ void remove_from_channel_list_id(struct Channel *channels, int id)
         }
     }
     // Usunięcie kanalu i przesunięcie pozostałych na liscie
+}
+
+void add_dm_message(struct Channel *channels, struct Mess *response)
+{
+    for (int i = 0; i < MAX_CHANNEL; i++)
+    {
+        if (response->to_chanel == channels[i].id)
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                if (response->to_user == channels[i].users[j].queue_id)
+                {
+
+                    for (int k = 98; k >= 0; k--)
+                    {
+                        channels[i].users[j].messages[k + 1] = channels[i].users[j].messages[k];
+                    }
+                    strcpy(channels[i].users[j].messages[0].body, response->body);
+                    strcpy(channels[i].users[j].messages[0].from_client_name, response->from_client_name);
+                    channels[i].users[j].messages[0].timestamp = response->timestamp;
+                    channels[i].users[j].messages[0].from_client = response->from_client;
+                    channels[i].users[j].messages[0].from_server = response->from_server;
+                    break;
+                }
+            }
+        }
+    }
 }

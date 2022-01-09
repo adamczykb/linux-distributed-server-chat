@@ -12,6 +12,7 @@
 #define TR_USER_JOINED "Dolaczyl uzytkownik"
 #define TR_USER_LEFT "Uzytkownik opuscil serwer"
 #define TR_SERVER_NO_KEYS "Brak wolnych kluczy dla tego servera w config.txt\n"
+#define TR_SERVER_CHANNEL_DELETED "Kanal zostal usuniety"
 
 #define TR_SERVER_INFO_KEY "Klucz serwera:"
 #define TR_SERVER_INFO_CLIENT_NUMBER "Liczba klientow na serwerze:"
