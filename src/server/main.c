@@ -17,27 +17,43 @@ struct Channel *channels;
 struct User *user;
 
 int result;
-
 int current_server_id = 0;
 time_t current_time;
 int server_key = 0;
-int *servers_ids;
+int *server_keys;      //tablica kluczy
+int *server_queue_ids; //tablica deskryptorow i pozycjach takich samych jak tablica wyzej
 int userSID, logSID, channelSID;
 int log_descriptor;
 int nr_of_lines;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
-
+char temp[255];
 void heartbeat_starter();
 
 void setup(char *config_path)
 {
+    char foo[255];
+
     nr_of_lines = 1;
     int channel_id, channel_index;
     num_of_config_lines(&nr_of_lines, config_path);
-    servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
-    load_config(&server_key, servers_ids, config_path);
+    server_keys = malloc(sizeof(int) * nr_of_lines + 1);
+    server_queue_ids = malloc(sizeof(int) * nr_of_lines + 1);
+    load_config(&server_key, server_keys, server_queue_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
 
+    struct Mess request;
+    clear_mess(&request);
+    request.msgid = 16; //rejestracja serwera
+    request.for_server = server_key;
+    request.from_server = current_server_id;
+    request.timestamp = time(NULL);
+    for (int i = 1; i < server_queue_ids[0] + 1; i++)
+    {
+        if (server_queue_ids[i] > 0 && server_keys[i] != server_key)
+        {
+            msgsnd(server_queue_ids[i], &request, sizeof(request) - sizeof(long), 0);
+        }
+    }
     if (current_server_id == -1)
     {
         perror(TR_QUEUE_ERROR);
@@ -45,17 +61,63 @@ void setup(char *config_path)
     }
     heartbeat_starter();
 }
+void sign_in_server(int *server_keys, int *server_queue_ids, int server_key)
+{
+    for (int i = 1; i <= server_queue_ids[0]; i++)
+    {
+        if (server_keys[i] == 0)
+        {
+            // server_keys[0]++;
+            server_keys[i] = server_key;
+            server_queue_ids[i] = msgget(server_key, 0644 | IPC_CREAT);
+            sprintf(temp, "%d", server_key);
+            add_to_log(log, time(NULL), "Podlaczono nowy serwer", "localhost", temp, 0);
+            break;
+        }
+    }
+}
+void sign_out_server(int *server_keys, int *server_queue_ids, int server_key)
+{
+    for (int i = 1; i <= server_queue_ids[0]; i++)
+    {
+        if (server_keys[i] == server_key)
+        {
+            sprintf(temp, "%d", server_keys[i]);
+            add_to_log(log, time(NULL), "Odlaczono serwer", "localhost", temp, 0);
+            // server_keys[0]--;
+            server_keys[i] = 0;
+            server_queue_ids[i] = 0;
+            break;
+        }
+    }
+}
 void broadcast_mess_to_other_servers(struct Mess msg)
 {
+    char foo[255];
     msg.broadcasted = 1;
-    for (int i = 0; i < nr_of_lines + 1; i++)
+    for (int i = 1; i < server_queue_ids[0] + 1; i++)
     {
-        if (servers_ids[i] > 0 && servers_ids[i] != current_server_id)
-            msgsnd(servers_ids[i], &msg, sizeof(msg) - sizeof(long), 0);
+        if (server_queue_ids[i] > 0 && server_keys[i] != server_key)
+        {
+            msgsnd(server_queue_ids[i], &msg, sizeof(msg) - sizeof(long), 0);
+        }
     }
 }
 void end_of_work()
 {
+    struct Mess request;
+    clear_mess(&request);
+    request.msgid = 15; // wylogowanie
+    request.for_server = server_key;
+    request.from_server = current_server_id;
+    request.timestamp = time(NULL);
+    for (int i = 1; i < server_queue_ids[0] + 1; i++)
+    {
+        if (server_queue_ids[i] > 0 && server_keys[i] != server_key)
+        {
+            msgsnd(server_queue_ids[i], &request, sizeof(request) - sizeof(long), 0);
+        }
+    }
     msgctl(current_server_id, IPC_RMID, NULL);
     shmdt(user);
     shmdt(log);
@@ -167,7 +229,6 @@ int main(int argc, char *argv[])
                 }
                 if (request.broadcasted == 0)
                 {
-
                     send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id);
                 }
                 add_to_log(log, time(NULL), "Pomyslnie utworzono kanal", "localhost", request.body, 0);
@@ -217,6 +278,9 @@ int main(int argc, char *argv[])
                 }
             }
             break;
+        case 7: //wyslanie zestawu podstawowych informacji
+            channel_info_on_server_login(channels, &request, current_server_id);
+            break;
         case 11:
             if (request.broadcasted == 0)
             {
@@ -250,17 +314,26 @@ int main(int argc, char *argv[])
                 }
             }
             break;
+        case 15: //wylogowanie serwera
+            sign_out_server(server_keys, server_queue_ids, request.for_server);
+
+            break;
+        case 16: //nowy serwer
+            sign_in_server(server_keys, server_queue_ids, request.for_server);
+
+            break;
+
         default: // obsluga blednego pakietu
-            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
+            sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
             break;
         }
-        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
+        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.for_server, request.to_chanel);
         write(log_descriptor, foo, strlen(foo));
-        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server, request.to_chanel);
+        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.for_server, request.to_chanel);
         write(log_descriptor, foo, strlen(foo));
         sleep(1);
         clear_mess(&request);
@@ -314,6 +387,21 @@ void heartbeat_starter()
         char server_id_string[255];
         sprintf(server_id_string, "%d", current_server_id);
         add_to_log(log, time(NULL), TR_SERVER_STARTED, server_id_string, TR_READY, 0);
+
+        clear_mess(&request);
+        request.msgid = 16; //rejestracja serwera
+        request.for_server = server_key;
+        request.from_server = current_server_id;
+        request.timestamp = time(NULL);
+        request.msgid = 7;
+        for (int i = 1; i < server_queue_ids[0] + 1; i++)
+        {
+            if (server_queue_ids[i] != 0 && server_keys[i] != server_key)
+            {
+                msgsnd(server_queue_ids[i], &request, sizeof(request) - sizeof(long), 0);
+                break;
+            }
+        }
 
         int client_number, status;
         sleep(1);

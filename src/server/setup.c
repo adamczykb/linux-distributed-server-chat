@@ -1,7 +1,7 @@
 #include "../../inc/server/setup.h"
 
 // Zwraca wskaźnik na tablicę [ilość_serverów, id_kolejki_servera1, ...]
-void load_config(int *server_key, int *servers_ids, char *path_to_config)
+void load_config(int *server_key,int *servers_keys, int *servers_ids, char *path_to_config)
 {
     // odczytanie pliku
     int file = open(path_to_config, O_RDWR);
@@ -14,6 +14,8 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
     // zapisanie elementów z pliku do listy
 
     servers_ids[0] = nr_of_lines;
+    servers_keys[0] = nr_of_lines;
+
     int current_v = 0, current_i = 1;
 
     /*
@@ -75,7 +77,8 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
             }
             if (exist)
             {
-                servers_ids[current_i] = msgget(current_v, 0644 | IPC_CREAT); // otwieramy z nim polaczenie
+                servers_keys[current_i]=current_v;
+                servers_ids[current_i] = msgget(current_v, 0666 | IPC_CREAT); // otwieramy z nim polaczenie
                 current_v = 0;
                 current_i += 1;
             }
@@ -90,15 +93,12 @@ void load_config(int *server_key, int *servers_ids, char *path_to_config)
         current_v = current_v * 10 + buff[i] - 48;
     }
     if (current_v != 0)
-        servers_ids[current_i] = msgget(current_v, 0644 | IPC_CREAT);
+                    servers_keys[current_i]=current_v;
+        servers_ids[current_i] = msgget(current_v, 0666 | IPC_CREAT);
 
     if (*server_key == 0) //jezel brak wolnych miejsc to wyrzucamy komunikat
     {
         printf(TR_SERVER_NO_KEYS);
         exit(-1);
     }
-}
-
-void new_channel(struct Mess *request,struct Channel *channels){
-    
 }

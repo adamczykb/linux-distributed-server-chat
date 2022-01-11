@@ -160,6 +160,30 @@ void channel_info_on_user_login(struct Channel *channels, struct Mess *request, 
         }
     }
 }
+void channel_info_on_server_login(struct Channel *channels, struct Mess *request, int from_server) // wysylanie informacjo o kanalach dla nowologujacego sie uzytkownika
+{
+    struct Mess response;
+    for (int i = 0; i < num_of_channels(channels); i++)
+    {
+        if (channels[i].id > 1)
+        {
+            send_created_channel(request->from_server, channels[i], from_server);
+            send_last_ten_msg_from_channel(channels, 1, request->from_server, from_server);
+
+            for (int j = 0; j < 10; j++)
+            {
+                if (channels[i].users[j].free == 0)
+                {
+                    send_new_channel_member(request->from_server, channels[i].id, channels[i].users[j].queue_id,channels[i].users[j].nick, from_server);
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
 
 void send_created_channel(int to, struct Channel channel, int from_server)
 {

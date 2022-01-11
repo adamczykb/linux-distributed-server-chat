@@ -17,4 +17,5 @@ void send_new_channel_member(int to, int channel_id, int creator_id,char *creato
 void add_user_to_channel_server_response(struct Channel *channels,struct Mess *request, struct User *user, int current_server_id,int result);
 void remove_user_from_channel_server_response(struct Channel *channels, struct Mess *request, struct User *user, int current_server_id, int result);
 void send_removed_channel(int to, int channel_id, int from_server);
+void channel_info_on_server_login(struct Channel *channels, struct Mess *request, int from_server);
 #endif

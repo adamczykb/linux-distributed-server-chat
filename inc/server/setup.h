@@ -12,6 +12,5 @@
 #ifndef PSIW_SETUP_H
 #define PSIW_SETUP_H
 
-void load_config(int *server_key, int *servers_ids, char *path_to_config);
-
+void load_config(int *server_key,int *servers_keys, int *servers_ids, char *path_to_config);
 #endif
