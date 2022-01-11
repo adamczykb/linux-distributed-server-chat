@@ -18,6 +18,7 @@ void add_new_channel(struct Channel *channels, int *id, int *channel_index, stru
         channels[num].users[0].free = 0;
         strcpy(channels[num].users[0].nick, mess->from_client_name);
         channels[num].users[0].queue_id = mess->from_client;
+        channels[num].users[0].server_host=mess->for_server;
     }
     for (int j = 0; j < 100; j++)
     {
@@ -117,7 +118,7 @@ void send_last_ten_msg_from_channel(struct Channel *channel, int channel_id, int
         }
     }
 }
-void send_channel_msg_to_users(struct Channel *channels, struct Mess request) // wysylanie wiadomosci w sposob broadcast do pozostalych czlonkow kanalu
+void send_channel_msg_to_users(struct Channel *channels, struct Mess request,int current_server_id) // wysylanie wiadomosci w sposob broadcast do pozostalych czlonkow kanalu
 {
 
     for (int i = 0; i < num_of_channels(channels); i++)
@@ -126,7 +127,7 @@ void send_channel_msg_to_users(struct Channel *channels, struct Mess request) //
         {
             for (int j = 0; j < 10; j++)
             {
-                if (channels[i].users[j].queue_id != 0)
+                if (channels[i].users[j].queue_id != 0 && channels[i].users[j].server_host==current_server_id)
                 {
                     msgsnd(channels[i].users[j].queue_id, &request, sizeof(request) - sizeof(long), 0);
                 }
@@ -200,21 +201,25 @@ void add_user_to_channel_server_response(struct Channel *channels, struct Mess *
 
     if (result == 0)
     {
-        response.body[0] = '0';
-        msgsnd(request->from_client, &response, sizeof(response) - sizeof(long), 0);
+        // if( request->broadcasted==0){
+            response.body[0] = '0';
+            msgsnd(request->from_client, &response, sizeof(response) - sizeof(long), 0);
+            send_last_ten_msg_from_channel(channels, request->to_chanel, request->from_client, current_server_id);
+        // }
         response.msgid = 4;
         for (int i = 0; i < MAX_USER; i++)
         {
             if (user[i].queue_id != 0)
                 msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
         }
-
-        send_last_ten_msg_from_channel(channels, request->to_chanel, request->from_client, current_server_id);
+        
     }
     else
     {
-        response.body[0] = '-';
-        msgsnd(request->from_client, &response, sizeof(response) - sizeof(long), 0);
+        if( request->broadcasted==0){
+            response.body[0] = '-';
+            msgsnd(request->from_client, &response, sizeof(response) - sizeof(long), 0);
+        }
     }
 }
 

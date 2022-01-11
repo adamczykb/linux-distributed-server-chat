@@ -10,6 +10,8 @@ void clear_mess(struct Mess *mess)
     strcmp(mess->to_client_name, "");
     mess->timestamp = (time_t)NULL;
     strcmp(mess->body, "");
+    mess->broadcasted=0;
+    mess->for_server=0;
 }
 
 void num_of_config_lines(int *nr_of_lines, char *path_to_config)
@@ -71,6 +73,7 @@ void add_user_to_channel(struct Channel *channels, struct Mess *mess,int *result
                     channels[i].users[j].free=0;
                     strcpy(channels[i].users[j].nick,mess->from_client_name);
                     channels[i].users[j].queue_id=mess->from_client;
+                    channels[i].users[j].server_host=mess->for_server;
                     *result=0;
                     break;
                 }
@@ -89,6 +92,8 @@ void remove_user_from_channel(struct Channel *channels, struct Mess *mess,int *r
                         channels[i].users[k].free=channels[i].users[k+1].free;
                         strcpy(channels[i].users[k].nick,channels[i].users[k+1].nick);
                         channels[i].users[k].queue_id=channels[i].users[k+1].queue_id;
+                        channels[i].users[k].server_host=channels[i].users[k+1].server_host;
+
                     }
                     *result=0;
                     break;

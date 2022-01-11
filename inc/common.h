@@ -26,9 +26,11 @@ struct Mess
     char from_client_name[100];
     int to_chanel;
     int to_user;
+    int broadcasted;
     char to_client_name[100];
     time_t timestamp;
     char body[1024];
+    int for_server;
 };
 
 struct User
@@ -36,6 +38,7 @@ struct User
     int queue_id;
     char nick[100];
     struct Mess messages[100];
+    int server_host;
     int free; // 0 -> nie 1 -> tak
 };
 

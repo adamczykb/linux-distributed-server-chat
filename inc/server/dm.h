@@ -1,5 +1,0 @@
-#ifndef PSIW_DIRECT_MESSAGE_H
-#define PSIW_DIRECT_MESSAGE_H
-
-
-#endif

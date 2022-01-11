@@ -8,7 +8,7 @@ int client_queue_id;
 int choosed_server_key = 0;
 int *server_keys;
 char nick[100] = "";
-char op_window_title[100] = "Komunikator";
+char op_window_title[100];
 char input_text[MAX_MSG_LEN] = "";
 
 enum typing_target input_target;
@@ -220,16 +220,18 @@ void main_screen()
                 // tu bedzie lecial pakiet do serwera i czekal na odpowiedz i od razu otworzy okno wiadomosci
                 clear_mess(&request);
                 clear_mess(&response);
-
+                if(strlen(input_text)){
                 request.msgid = 3;
                 request.from_client = client_queue_id;
                 request.timestamp = time(NULL);
                 strcpy(request.from_client_name, nick);
                 strcpy(request.body, input_text);
                 strcpy(input_text, "");
+                request.for_server = server_queue_id;
+                request.broadcasted = 0;
+
                 msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
                 strcpy(alert, "");
-
                 msgrcv(client_queue_id, &response, sizeof(response) - sizeof(long), 3, 0);
                 new_channel(channels, &response);
 
@@ -244,6 +246,7 @@ void main_screen()
                 cursor_index[0] = num_of_channels(channels) - 1;
 
                 sprintf(op_window_title, "Rozmowa na kanale %s", channels[cursor_index[0]].name);
+                }
                 break;
             case TYPING_TARGET_NEW_MESSAGE:
                 if (strlen(input_text) > 0)
@@ -273,6 +276,7 @@ void main_screen()
                         strcpy(request.body, input_text);
                         request.to_chanel = target_channel_id;
                         request.to_user = target_user_id;
+                        request.for_server=channels[target_index_channel].users[target_index_user].server_host;
                         strcpy(input_text, "");
                         msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);
                         strcpy(alert, "");
@@ -313,6 +317,7 @@ void main_screen()
 
                 request.msgid = 4;
                 request.from_client = client_queue_id;
+                request.for_server = server_queue_id;
                 request.to_chanel = channels[cursor_index[0]].id;
                 request.timestamp = time(NULL);
                 strcpy(request.from_client_name, nick);
@@ -342,7 +347,8 @@ void main_screen()
             strcpy(alert, "Podaj nazwe tworzonego kanalu!");
         }
         break;
-    case 'e':
+    case ';':
+    
         if (cursor_index[1] == 1  && cursor_index[0] < num_of_channels(channels) && channels[cursor_index[0]].usr_signed==1){
             input_target = TYPING_TARGET_NO_DECLARED;
             mess_type = MSG_TYPE_NO_DECLARED;
@@ -360,6 +366,7 @@ void main_screen()
             request.from_client = client_queue_id;
             request.to_chanel = target_channel_id;
             request.timestamp = time(NULL);
+            request.for_server = server_queue_id;
             strcpy(request.from_client_name, nick);
             strcpy(request.body, "");
             msgsnd(server_queue_id, &request, sizeof(request) - sizeof(long), 0);

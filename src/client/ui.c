@@ -165,7 +165,7 @@ void channel_options(WINDOW *channel_list_window, struct Channel *channels, int 
                 n += 1;
             }else{
                 if(channels[pos].usr_signed==1){
-                    mvwprintw(channel_list_window, 4 + i, 3, "[e] Opusc");
+                    mvwprintw(channel_list_window, 4 + i, 3, "[;] Opusc");
                     i += 2;
                     n += 2;
                 }

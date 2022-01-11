@@ -44,6 +44,7 @@ void registration(struct Mess request, int server_queue_id, struct User *user, i
     // Dodanie użytkownika
     strcpy(user[nr_of_clients].nick, request.from_client_name);
     user[nr_of_clients].queue_id = request.from_client;
+    user[nr_of_clients].server_host = server_queue_id;
     user[nr_of_clients].free = 0;
 
     response.msgid = 2;

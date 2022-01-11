@@ -24,18 +24,19 @@ int server_key = 0;
 int *servers_ids;
 int userSID, logSID, channelSID;
 int log_descriptor;
+int nr_of_lines;
 // nastepuje tu pobranie kluczy kolejek, zostalo to rozbite na dwa bo potrzebujemy listy pozostalych serwerow a nie mozna przeslac jako parametr nieokreslonego pointera
 
 void heartbeat_starter();
 
 void setup(char *config_path)
 {
-    int nr_of_lines = 1, channel_id, channel_index;
+    nr_of_lines = 1;
+    int channel_id, channel_index;
     num_of_config_lines(&nr_of_lines, config_path);
     servers_ids = malloc(sizeof(int) * nr_of_lines + 1);
     load_config(&server_key, servers_ids, config_path);
     current_server_id = msgget(server_key, 0644 | IPC_CREAT);
-    // channels = malloc(sizeof(struct Channel) * MAX_CHANNEL);
 
     if (current_server_id == -1)
     {
@@ -43,7 +44,15 @@ void setup(char *config_path)
         exit(1);
     }
     heartbeat_starter();
-
+}
+void broadcast_mess_to_other_servers(struct Mess msg)
+{
+    msg.broadcasted = 1;
+    for (int i = 0; i < nr_of_lines + 1; i++)
+    {
+        if (servers_ids[i] > 0 && servers_ids[i] != current_server_id)
+            msgsnd(servers_ids[i], &msg, sizeof(msg) - sizeof(long), 0);
+    }
 }
 void end_of_work()
 {
@@ -121,6 +130,8 @@ int main(int argc, char *argv[])
                 add_to_log(log, time(NULL), TR_USER_JOINED, from_client_string, request.from_client_name, 0);
 
                 request.to_chanel = 1;
+                request.for_server = current_server_id;
+
                 add_user_to_channel(channels, &request, &result);
                 channel_info_on_user_login(channels, &request, current_server_id);
                 send_last_ten_msg_from_channel(channels, 1, request.from_client, current_server_id);
@@ -139,6 +150,10 @@ int main(int argc, char *argv[])
             break;
         case 3: // nowy kanal
             int channel_id, channel_index;
+            if (request.broadcasted == 0)
+            {
+                broadcast_mess_to_other_servers(request);
+            }
             add_new_channel(channels, &channel_id, &channel_index, &request);
             if (channel_id != -1)
             {
@@ -150,34 +165,43 @@ int main(int argc, char *argv[])
                         send_new_channel_member(user[i].queue_id, channel_id, request.from_client, request.from_client_name, current_server_id);
                     }
                 }
+                if (request.broadcasted == 0)
+                {
 
-                send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id);
-
+                    send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id);
+                }
                 add_to_log(log, time(NULL), "Pomyslnie utworzono kanal", "localhost", request.body, 0);
             }
             else
                 add_to_log(log, time(NULL), "Blad podczas tworzenia kanalu", "localhost", request.body, 1);
             break;
         case 4:
+            if (request.broadcasted == 0)
+            {
+                broadcast_mess_to_other_servers(request);
+            }
             add_user_to_channel(channels, &request, &result);
             add_user_to_channel_server_response(channels, &request, user, current_server_id, result);
 
             break;
         case 5:
+            if (request.broadcasted == 0)
+            {
+                broadcast_mess_to_other_servers(request);
+            }
             remove_user_from_channel(channels, &request, &result);
             remove_user_from_channel_server_response(channels, &request, user, current_server_id, result);
-            
+
             int user_num, srv_index = -1;
             for (int i = 1; i < MAX_CHANNEL; i++)
             {
-                 if(channels[i].free==1)
-                break;
+                if (channels[i].free == 1)
+                    break;
                 if (channels[i].id == request.to_chanel)
                 {
                     srv_index = i;
                     break;
                 }
-               
             }
             if (srv_index > 0)
             {
@@ -194,26 +218,38 @@ int main(int argc, char *argv[])
             }
             break;
         case 11:
+            if (request.broadcasted == 0)
+            {
+                broadcast_mess_to_other_servers(request);
+            }
             add_msg_to_channel(channels, &request);
-            send_channel_msg_to_users(channels, request);
+            send_channel_msg_to_users(channels, request, current_server_id);
             break;
         case 13: //wiadomosc prywatna
-            int sended=-1;
-            request.from_server=current_server_id;
-            msgsnd(request.from_client, &request, sizeof(request) - sizeof(long), 0);
-            for(int i =0;i<MAX_USER;i++){
-                if(user[i].queue_id==request.to_user){ //po to zeby mozna bylo wysylac tylko wiadomosci do userow ktorzy sa do tego serwera zalogowani
-                    request.to_user=request.from_client;
+            int sended = -1;
+            request.from_server = current_server_id;
+            if (request.broadcasted == 0)
+            {
+                msgsnd(request.from_client, &request, sizeof(request) - sizeof(long), 0);
+            }
+            for (int i = 0; i < MAX_USER; i++)
+            {
+                if (user[i].queue_id == request.to_user)
+                { //po to zeby mozna bylo wysylac tylko wiadomosci do userow ktorzy sa do tego serwera zalogowani
+                    request.to_user = request.from_client;
                     msgsnd(user[i].queue_id, &request, sizeof(request) - sizeof(long), 0);
-                    sended=0;
+                    sended = 0;
                     break;
                 }
             }
-
-            // if(sended!=0){
-
-            // }
-        break;
+            if (sended != 0)
+            {
+                if (request.broadcasted == 0)
+                {
+                    broadcast_mess_to_other_servers(request);
+                }
+            }
+            break;
         default: // obsluga blednego pakietu
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
             write(log_descriptor, foo, strlen(foo));
@@ -222,6 +258,11 @@ int main(int argc, char *argv[])
             sleep(1);
             break;
         }
+        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
+        write(log_descriptor, foo, strlen(foo));
+        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFrom client:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.from_server, request.to_chanel);
+        write(log_descriptor, foo, strlen(foo));
+        sleep(1);
         clear_mess(&request);
         clear_mess(&response);
     }
@@ -267,7 +308,7 @@ void heartbeat_starter()
         struct Mess request;
         strcpy(request.body, "Globalny");
         request.from_client = 0;
-        int  channel_id, channel_index;
+        int channel_id, channel_index;
         add_new_channel(channels, &channel_id, &channel_index, &request);
 
         char server_id_string[255];
@@ -305,13 +346,15 @@ void heartbeat_starter()
                         request.to_chanel = channels[j].id;
                         remove_user_from_channel(channels, &request, &result);
                         remove_user_from_channel_server_response(channels, &request, user, current_server_id, result);
+                        broadcast_mess_to_other_servers(request);
                         int user_num;
                         current_user_number(&user_num, channels[j].users);
-                        if (user_num < 1 && j!=0)
+                        if (user_num < 1 && j != 0)
                         {
                             add_to_log(log, time(NULL), TR_SERVER_CHANNEL_DELETED, from_client_string, channels[j].name, 0);
                             send_removed_channel(user[i].queue_id, request.to_chanel, current_server_id);
                             remove_from_channel_list_id(channels, channels[j].id);
+
                             j--;
                         }
                     }
