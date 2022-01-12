@@ -168,7 +168,7 @@ void channel_info_on_server_login(struct Channel *channels, struct Mess *request
         if (channels[i].id > 1)
         {
             send_created_channel(request->from_server, channels[i], from_server);
-            send_last_ten_msg_from_channel(channels, 1, request->from_server, from_server);
+            send_last_ten_msg_from_channel(channels, channels[i].id, request->from_server, from_server);
 
             for (int j = 0; j < 10; j++)
             {

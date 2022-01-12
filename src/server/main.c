@@ -93,12 +93,12 @@ void sign_out_server(int *server_keys, int *server_queue_ids, int server_key)
 }
 void broadcast_mess_to_other_servers(struct Mess msg)
 {
-    char foo[255];
     msg.broadcasted = 1;
     for (int i = 1; i < server_queue_ids[0] + 1; i++)
     {
         if (server_queue_ids[i] > 0 && server_keys[i] != server_key)
         {
+           
             msgsnd(server_queue_ids[i], &msg, sizeof(msg) - sizeof(long), 0);
         }
     }
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        if (usr_exist == -1 && request.msgid != 2)
+        if (usr_exist == -1 && request.msgid != 2 && request.from_server!=0)
             continue;
         current_time = time(NULL);
         switch (request.msgid)
@@ -331,10 +331,6 @@ int main(int argc, char *argv[])
             sleep(1);
             break;
         }
-        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.for_server, request.to_chanel);
-        write(log_descriptor, foo, strlen(foo));
-        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), response.msgid, response.body, response.for_server, request.to_chanel);
-        write(log_descriptor, foo, strlen(foo));
         sleep(1);
         clear_mess(&request);
         clear_mess(&response);
