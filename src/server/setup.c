@@ -84,8 +84,11 @@ void load_config(int *server_key,int *servers_keys, int *servers_ids, char *path
             }
             else
             {
+                // if(got==0){
                 // queue_ids[current_i] = msgget(current_v, 0644 | IPC_CREAT); // to bedzie nasz klucz kolejki, nie otwieramy go tu, robimy to w main.c
                 *server_key = current_v;
+                // got=1;
+                // }
                 break;
             }
             continue;

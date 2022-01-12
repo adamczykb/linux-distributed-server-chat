@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
         status = msgrcv(current_server_id, &request, sizeof(request) - sizeof(long), -17, IPC_NOWAIT);
         if (status == -1)
         {
-            usleep(100 * 1000);
+            usleep(50 * 1000);
             continue;
         }
         int usr_exist = -1;
@@ -175,8 +175,8 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        if (usr_exist == -1 && request.msgid != 2 && request.from_server!=0)
-            continue;
+        // if ((usr_exist == -1 && request.msgid != 2) || (request.from_server==0))
+        //     continue;
         current_time = time(NULL);
         switch (request.msgid)
         {
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 
                 add_user_to_channel(channels, &request, &result);
                 channel_info_on_user_login(channels, &request, current_server_id);
-                send_last_ten_msg_from_channel(channels, 1, request.from_client, current_server_id);
+                send_last_ten_msg_from_channel(channels, 1, request.from_client, current_server_id,0);
 
                 response.msgid = 4;
                 response.to_chanel = 1;
@@ -223,13 +223,13 @@ int main(int argc, char *argv[])
                 {
                     if (user[i].free == 0)
                     {
-                        send_created_channel(user[i].queue_id, channels[channel_index], current_server_id);
-                        send_new_channel_member(user[i].queue_id, channel_id, request.from_client, request.from_client_name, current_server_id);
+                        send_created_channel(user[i].queue_id, channels[channel_index], current_server_id,0);
+                        send_new_channel_member(user[i].queue_id, channel_id, request.from_client, request.from_client_name, current_server_id,0);
                     }
                 }
                 if (request.broadcasted == 0)
                 {
-                    send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id);
+                    send_last_ten_msg_from_channel(channels, channel_id, request.from_client, current_server_id,0);
                 }
                 add_to_log(log, time(NULL), "Pomyslnie utworzono kanal", "localhost", request.body, 0);
             }
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
             channel_info_on_server_login(channels, &request, current_server_id);
             break;
         case 11:
-            if (request.broadcasted == 0)
+            if (request.broadcasted == 0 && request.to_chanel!=1)
             {
                 broadcast_mess_to_other_servers(request);
             }
@@ -331,9 +331,13 @@ int main(int argc, char *argv[])
             sleep(1);
             break;
         }
-        sleep(1);
+        sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nFor server:%d\nCHANNEL: %d\n-----------\n", ctime(&current_time), request.msgid, request.body, request.from_server, request.to_chanel);
+        write(log_descriptor, foo, strlen(foo));
+           
         clear_mess(&request);
         clear_mess(&response);
+        usleep(50 * 1000);
+
     }
 
     msgctl(current_server_id, IPC_RMID, NULL);
