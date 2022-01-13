@@ -200,11 +200,13 @@ void main_screen()
         break;
     case KEY_LEFT:
         cursor_index[1]--;
+        cursor_index[0]=0;
         if (cursor_index[1] < 0)
             cursor_index[1] = 2;
         break;
     case KEY_RIGHT:
         cursor_index[1]++;
+        cursor_index[0]=0;
         if (cursor_index[1] > 2)
             cursor_index[1] = 0;
         break;
@@ -288,7 +290,7 @@ void main_screen()
                 break;
             }
         }
-        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(channels->users, 10))
+        if (cursor_index[1] == 0 && cursor_index[0] < num_of_users(channels[target_index_channel].users, 10))
         {
             strcpy(input_text, "");
             if(channels[target_index_channel].users[cursor_index[0]].queue_id!=client_queue_id){

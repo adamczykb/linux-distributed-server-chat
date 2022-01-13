@@ -125,7 +125,6 @@ void text_type(WINDOW *operation_window, char *text, char *alert)
 
 void client_list(WINDOW *client_list_window, struct Channel *channels, int n,int current_user_id, int cursor_index[2])
 {
-    // mvwprintw(client_list_window, 1, 3, "\\/ [ENTER] /\\");
     for (int i = 0; i < 10; i++)
     {
         if (channels[n].users[i].free == 1)
@@ -138,7 +137,6 @@ void client_list(WINDOW *client_list_window, struct Channel *channels, int n,int
         
         if (cursor_index[1] == 0 && cursor_index[0] == i && channels[n].users[i].queue_id == current_user_id)
             wattron(client_list_window, COLOR_PAIR(3));
-        
         mvwprintw(client_list_window, 1 +i, 3, channels[n].users[i].nick);
         wattroff(client_list_window, COLOR_PAIR(4));
         wattroff(client_list_window, COLOR_PAIR(2));
