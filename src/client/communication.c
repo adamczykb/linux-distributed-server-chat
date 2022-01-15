@@ -4,7 +4,8 @@
 
 void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *result)
 {
-    int server_id = get_server_id(server_nr, *result);
+    int server_id = get_server_id(server_nr);
+    *result = server_id;
     if (server_id == -1) return;
 
     struct Mess registration_msg;
@@ -21,6 +22,8 @@ void connect_to_server(int server_nr, char nick[100], int client_queue_id, int *
     msgrcv(client_queue_id, &registration_ans, sizeof(registration_ans) - sizeof(long), 2, 0);
     if (registration_ans.body[0] == '0')
         *result = registration_ans.from_server;
+    else if (registration_ans.body[0] == '1') // serwer jest pełny
+        *result = -1;
     else
         *result = -1;
 }

@@ -32,6 +32,7 @@ void registration(struct Mess request, int server_queue_id, struct User *user, i
     if (nr_of_clients > 4)
     {
         *status = -1;
+        return;
     }
     // Sprawdzenie czy nazwa już nie występuje
     for (int i = 0; i < nr_of_clients; i++)
@@ -74,6 +75,11 @@ void logout(int queue_id, struct User *user, int *status)
                 strcpy(user[j].nick, user[j + 1].nick);
                 user[j].queue_id = user[j + 1].queue_id;
                 user[j].free = user[j + 1].free;
+            }
+            if (i = MAX_USER-1){
+                strcpy(user[i].nick, "");
+                user[i].queue_id = 0;
+                user[i].free = 1;
             }
             break;
         }

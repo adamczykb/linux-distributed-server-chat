@@ -225,6 +225,17 @@ int main(int argc, char *argv[])
                         msgsnd(user[i].queue_id, &response, sizeof(response) - sizeof(long), 0);
                 }
             }
+            if (reg_outcome == -1) // serwer jest pełny
+            {
+                char from_client_string[20];
+                sprintf(from_client_string, "%d", request.from_client);
+                add_to_log(log, time(NULL), "Próba logowania - serwer pelny", from_client_string, request.from_client_name, 0);
+
+                response.msgid = 2;
+                response.from_server = current_server_id;
+                response.body[0] = 1;
+                msgsnd(request.from_client, &response, sizeof(response) - sizeof(long), 0);
+            }
 
             break;
         case 3: // nowy kanal

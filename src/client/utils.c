@@ -51,14 +51,10 @@ void init_channel_struct(struct Channel *channel)
     }
 }
 
-int get_server_id(int server_nr, int *result)
+int get_server_id(int server_nr)
 {
     int server_id = msgget(server_nr, 0644);
-    if (server_id == -1)
-    {
-        *result = -1;
-        return;
-    }
+    return server_id;
 }
 
 void new_channel(struct Channel *channels, struct Mess *mess)
