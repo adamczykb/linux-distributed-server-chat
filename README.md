@@ -50,21 +50,20 @@ Jeśli połączą się za pomocą innego kanału niż "Globalny" to utworzą inn
 Każdy program towrzy swoją wlasna kolejke, która działa podobnie do skrzynki pocztowej. Do nich trafiaja wiadomości. Odsyłanie informacji wiąze się ze znajomościa adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
 
 ### Kody pakietów
-<2> wymiana informacji -> rejestracja użytkownika
-<3> wymiana informacji -> rejestracja kanału
-<4> wymiana informacji -> zapisanie do kanału (user)
-<5> wymiana informacji -> wypisanie z kanału (user)
-<6> wymiana informacji -> akceptacja
-<7> wymiana informacji podczas logowania usera/serwera
-<8> wymiana informacji -> lista kanałów
-<9> wymiana informacji -> lista użytkowników na kanale
-<10> wymiana informacji -> lista wiadomości na kanale (10)
-<11> wiadomość -> z kanału
-<13> wiadomość -> prywatna
-<14> akcja -> wylogowanie (user)
-<15> akcja -> wylogowanie (serwer)
-<16> logowanie -> serwer
-<20> HeartBeat
+<2> wymiana informacji -> rejestracja użytkownika \
+<3> wymiana informacji -> rejestracja kanału oraz zwrot 10 ostatnich wiadomości \
+<4> wymiana informacji -> zapisanie do kanału (user) \
+<5> wymiana informacji -> wypisanie z kanału (user) \
+<6> wymiana informacji -> akceptacja \
+<7> wymiana informacji -> podczas logowania serwera wraz z 10 ostatnimi wiadomościami na kanałach \
+<8> wymiana informacji -> lista kanałów \
+<9> wymiana informacji -> lista użytkowników na kanale \
+<11> wiadomość -> z kanału \
+<13> wiadomość -> prywatna \
+<14> akcja -> wylogowanie (user) \
+<15> akcja -> wylogowanie (serwer) \
+<16> logowanie -> serwer \
+<20> HeartBeat 
 
 
 ### Struktura pakietu
