@@ -47,7 +47,7 @@ Gdy 2. użytkowników łączy się przez kanał "Globalny" i używa funkcji wiad
 Jeśli połączą się za pomocą innego kanału niż "Globalny" to utworzą inny kanał prywatny.
 
 ### Typ komunikacji
-Każdy program towrzy swoją wlasna kolejke, która działa podobnie do skrzynki pocztowej. Do nich trafiaja wiadomości. Odsyłanie informacji wiąze się ze znajomościa adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
+Każdy program tworzy swoją własna kolejkę, która działa podobnie do skrzynki pocztowej. Do tych kolejek trafiają wiadomości. Odsyłanie informacji wiąże się ze znajomością adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
 
 ### Kody pakietów
 <2> wymiana informacji -> rejestracja użytkownika \
