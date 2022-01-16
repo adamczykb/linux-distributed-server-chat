@@ -5,6 +5,8 @@
 Do działania programu potrzebna jest biblioteka ncurses.
 Kroki do jej instalacji podane są na stronie: https://www.cyberciti.biz/faq/linux-install-ncurses-library-headers-on-debian-ubuntu-centos-fedora/
 
+W pliku build.sh została ona statycznie załączona.
+
 Aby dokonać kompilacji wystarczy wykonać skrypt "build.sh".
 Pojawią się pliki wykonywalne "psiw_klient.exe" i "psiw_serwer.exe".
 
