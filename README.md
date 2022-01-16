@@ -46,6 +46,44 @@ Przykład:
 Gdy 2. użytkowników łączy się przez kanał "Globalny" i używa funkcji wiadomości prywatnych tworzony jest kanał prywatny przypisany do kanału "Globalny".
 Jeśli połączą się za pomocą innego kanału niż "Globalny" to utworzą inny kanał prywatny.
 
+### Typ komunikacji
+Każdy program towrzy swoją wlasna kolejke, która działa podobnie do skrzynki pocztowej. Do nich trafiaja wiadomości. Odsyłanie informacji wiąze się ze znajomościa adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
+
+### Kody pakietów
+<2> wymiana informacji -> rejestracja użytkownika
+<3> wymiana informacji -> rejestracja kanału
+<4> wymiana informacji -> zapisanie do kanału (user)
+<5> wymiana informacji -> wypisanie z kanału (user)
+<6> wymiana informacji -> akceptacja
+<7> wymiana informacji podczas logowania usera/serwera
+<8> wymiana informacji -> lista kanałów
+<9> wymiana informacji -> lista użytkowników na kanale
+<10> wymiana informacji -> lista wiadomości na kanale (10)
+<11> wiadomość -> z kanału
+<13> wiadomość -> prywatna
+<14> akcja -> wylogowanie (user)
+<15> akcja -> wylogowanie (serwer)
+<16> logowanie -> serwer
+<20> HeartBeat
+
+
+### Struktura pakietu
+```c
+struct Mess
+{
+    long msgid;                 // identyfikator pakietu
+    int from_server;            // deskryptor serwera
+    int from_client;            // deskryptor klienta
+    char from_client_name[100]; // nick klienta
+    int to_chanel;              // id kanalu do ktorego kierowana jest wiadomosc
+    int to_user;                // deskryptor klienta do ktorego kierowany jest pakiet
+    int broadcasted;            // informacja o rozpowszechnieniu wiadomosci miedzy serwerami
+    char to_client_name[100];   // nick adresata
+    time_t timestamp;           // czas utworzenia pakietu
+    char body[1024];            // obszar dla pozostalych wiadomosci
+    int for_server;             // informacja o lokalizacji usera
+};
+```
 
 ## Wymogi
 Max kientów na serwer: 5
