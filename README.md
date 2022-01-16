@@ -10,7 +10,7 @@ Pojawią się pliki wykonywalne "psiw_klient.exe" i "psiw_serwer.exe".
 
 ### Serwer
 Po uruchomieniu serwer przypisuje sobie pierwszy wolny klucz z pliku "config.in" i jest gotowy do działania.
-W jego oknie "zmiany" można przeglądać jego pracę.
+W jego oknie "Zmiany" można przeglądać jego pracę.
 
 ### Klient
 Po uruchomieniu klienta należy podać swój nick i wybrać serwer do podłączenia (jeśli serwer nie jest dostępny powinien pojawić się o tym komunikat).
@@ -27,21 +27,26 @@ Aby wysłać wiadomość wystarczy wpisać ją w oknie wiadomości i nacisnąć 
 
 
 ## Ustalenia
-Wykorzystujemy istniejącą kolejkę wejściową serwera i kolejkę wejściową klienta, nie tworzymy nowych. 
-Serwer komunikuje się z innymi przy pomocy ich kolejek wejściowych, tzn. tworzy pakiet o konkretnym nagłówku, który ma za zadanie aktualizacje kanałów.
+### Komunikacja klient-serwer
+Każdy serwer i każdy klient tworzy swoją kolejkę przy uruchomieniu.
+Klienci pobierają numery serwerów z pliku "config.in" dzięki czemu wiedzą do jakich serwerów mogą się podłączyć.
+Po połączeniu klient wysyła swoje wiadomości na kolejkę serwera, a serwer odpowiada, wysyłając wiadomość tego samego typu na kolejkę klienta.
+
+### Komunikacja serwer-serwer
+Serwery komunikują się pomiędzy sobą przy pomocy ich kolejek wejściowych.
+Przy informacjach, które muszą dotrzeć do wszystkich serwerów (np. utworzenie/usunięcie kanałów) serwer, który posiada wiadomość wysyła ją, w niezmienionej formie, do wszystkich pozostałych serwerów.
+
+### Kanały
+Każdy serwer ma kanał o nazwie "Globalny", zawierający wszystkich użytkowników serwera.
+Kanały utworzone przez użytkowników są widoczne i mogą być używane przez użytkowników wszystkich serwerów.
+
+### Wiadomości prywatne
+Wiadomości prywatne są realizowane jako kanały dwuosobowe, przypisane do konkretnego kanału właściwego.
+Przykład:
+Gdy 2. użytkowników łączy się przez kanał "Globalny" i używa funkcji wiadomości prywatnych tworzony jest kanał prywatny przypisany do kanału "Globalny".
+Jeśli połączą się za pomocą innego kanału niż "Globalny" to utworzą inny kanał prywatny.
+
 
 ## Wymogi
 Max kientów na serwer: 5
 Max serwerów: 10
-
-## Klient
-* Pyta, który serwer (może być juz pełny)
-* Podaj nazwę użytkownika (może być zajęta)
-* menu:
-    - lista użytkowników na serwerze
-    - lista pokoi i użytkowników na serwerze
-    - zapisz/wypisz się z pokoju
-    - 10 ostatich wiadomości w pokoju
-    - wyślij wiadomość do pokoju
-    - wyślij wiadomość prywatną
-    - wylogowanie się
