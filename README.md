@@ -55,7 +55,7 @@ Każdy program tworzy swoją własna kolejkę, która działa podobnie do skrzyn
 <4> wymiana informacji -> zapisanie do kanału (user) \
 <5> wymiana informacji -> wypisanie z kanału (user) \
 <6> wymiana informacji -> akceptacja \
-<7> wymiana informacji -> podczas logowania serwera wraz z 10 ostatnimi wiadomościami na kanałach \
+<7> wymiana informacji -> do nowo zalogowanego serwera wraz z 10 ostatnimi wiadomościami na kanałach \
 <8> wymiana informacji -> lista kanałów \
 <9> wymiana informacji -> lista użytkowników na kanale \
 <11> wiadomość -> z kanału \
