@@ -171,6 +171,9 @@ int main(int argc, char *argv[])
     init_pair(3, COLOR_RED, COLOR_BLACK);
     int reg_outcome;
     char foo[2048];
+    int sended = -1;
+    int channel_id, channel_index;
+
 
     while (1)
     {
@@ -239,7 +242,6 @@ int main(int argc, char *argv[])
 
             break;
         case 3: // nowy kanal
-            int channel_id, channel_index;
             if (request.broadcasted == 0)
             {
                 broadcast_mess_to_other_servers(request);
@@ -318,7 +320,6 @@ int main(int argc, char *argv[])
             send_channel_msg_to_users(channels, request, current_server_id);
             break;
         case 13: // wiadomosc prywatna
-            int sended = -1;
             request.from_server = current_server_id;
             if (request.broadcasted == 0)
             {

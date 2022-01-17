@@ -47,22 +47,35 @@ Gdy 2. użytkowników łączy się przez kanał "Globalny" i używa funkcji wiad
 Jeśli połączą się za pomocą innego kanału niż "Globalny" to utworzą inny kanał prywatny.
 
 ### Typ komunikacji
-Każdy program tworzy swoją własna kolejkę, która działa podobnie do skrzynki pocztowej. Do tych kolejek trafiają wiadomości. Odsyłanie informacji wiąże się ze znajomością adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
+Każdy program tworzy swoją własną kolejkę, która działa podobnie do skrzynki pocztowej. Do tych kolejek trafiają wiadomości. Odsyłanie informacji wiąże się ze znajomością adresu serwera, do którego kierujemy odpowiedź, on decyduje gdzie wiadomość pójdzie dalej.
 
 ### Kody pakietów
 <2> wymiana informacji -> rejestracja użytkownika \
+
 <3> wymiana informacji -> rejestracja kanału oraz zwrot 10 ostatnich wiadomości \
+
 <4> wymiana informacji -> zapisanie do kanału (user) \
+
 <5> wymiana informacji -> wypisanie z kanału (user) \
+
 <6> wymiana informacji -> akceptacja \
+
 <7> wymiana informacji -> do nowo zalogowanego serwera wraz z 10 ostatnimi wiadomościami na kanałach \
+
 <8> wymiana informacji -> lista kanałów \
+
 <9> wymiana informacji -> lista użytkowników na kanale \
+
 <11> wiadomość -> z kanału \
+
 <13> wiadomość -> prywatna \
+
 <14> akcja -> wylogowanie (user) \
+
 <15> akcja -> wylogowanie (serwer) \
+
 <16> logowanie -> serwer \
+
 <20> HeartBeat 
 
 

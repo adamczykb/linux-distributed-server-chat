@@ -120,6 +120,7 @@ int main(int argc, char *argv[])
 
     strcpy(alert, "");
 
+    char foo[2048];
     init_screen();
     while (1)
     {
@@ -164,7 +165,6 @@ int main(int argc, char *argv[])
             add_dm_message(channels,&response);
             break;
         default: // obsluga blednego pakietu
-            char foo[2048];
             sprintf(foo, "\n%s\nBlad pakietu %ld\nBody:%s\nTimestamp:%ld\nFrom client:%d\nChannel id: %d-----------\n", ctime(&current_time), response.msgid, response.body, response.timestamp, response.from_server, response.to_chanel);
             write(log_descriptor, foo, strlen(foo));
             sleep(1);
