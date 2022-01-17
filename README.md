@@ -3,9 +3,9 @@
 ## Tutorial
 ### Instalacja i uruchamianie
 Do działania programu potrzebna jest biblioteka ncurses.
-W pliku build.sh została ona statycznie załączona.
+W pliku "build.sh" została ona statycznie załączona, jest jednak wadliwa i lepiej używać skryptu "build_dynamic.sh".
 
-Aby dokonać kompilacji wystarczy wykonać skrypt "build.sh".
+Aby dokonać kompilacji wystarczy wykonać skrypt "build_dynamic.sh".
 Pojawią się pliki wykonywalne "psiw_klient.exe" i "psiw_serwer.exe".
 
 ### Serwer
